@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { friendly } from '../lib/util'
 import { useOptions } from './common'
+import { MailSettings } from '../components/Mail'
 
 export default function Setup() {
   const a = useAuth()
@@ -13,7 +14,7 @@ export default function Setup() {
   return (
     <>
       <h1>Setup</h1>
-      <Tabs tabs={['Centres', 'Programs', 'Partners']} value={tab} onChange={setTab} />
+      <Tabs tabs={['Centres', 'Programs', 'Partners', 'Email']} value={tab} onChange={setTab} />
       {tab === 'Centres' && (
         <Crud title="Centres" table="centres" order={{ col: 'name' }} canAdd canEdit canDelete onChanged={a.reloadLookups}
           defaults={{ active: true }} clean={v => ({ ...v, code: (v.code ?? '').toUpperCase() })}
@@ -37,6 +38,7 @@ export default function Setup() {
           fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]}
           actions={r => <button className="link" onClick={() => setScope(r)}>Access</button>} />
       )}
+      {tab === 'Email' && <MailSettings />}
       {scope && <Scopes partner={scope} onClose={() => setScope(null)} />}
     </>
   )

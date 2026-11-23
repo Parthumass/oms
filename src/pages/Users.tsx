@@ -17,6 +17,7 @@ export default function Users() {
     { key: 'code', label: 'ID', help: 'For example PEF01BD. Each ID can be used once.' },
     { key: 'email', label: 'Login name', form: false, list: r => loginName(r.email) },
     { key: 'full_name', label: 'Name' },
+    { key: 'title', label: 'Title', help: 'Shown instead of the role name, for example COO. It does not change what the person can do.' },
     { key: 'role', label: 'Role', type: 'select', options: ROLES },
     { key: 'centre_id', label: 'Centre (centre lead)', type: 'select', options: o.allCentres },
     { key: 'volunteer_id', label: 'Volunteer record', type: 'select', options: o.allVolunteers,

@@ -6,7 +6,7 @@ export type Opt = { value: string; label: string; sub?: string }
 export type Field = {
   key: string
   label: string
-  type?: 'text' | 'textarea' | 'date' | 'number' | 'select' | 'bool' | 'weekdays' | 'email'
+  type?: 'text' | 'textarea' | 'date' | 'number' | 'select' | 'bool' | 'weekdays' | 'email' | 'time'
   options?: Opt[] | string[]
   required?: boolean
   list?: boolean | ((row: any) => ReactNode)
@@ -23,6 +23,7 @@ export function show(f: Field, row: any): ReactNode {
   if (v == null || v === '') return ''
   if (f.type === 'bool') return v ? 'Yes' : 'No'
   if (f.type === 'date') return fmtDate(v)
+  if (f.type === 'time') return String(v).slice(0, 5) + ' IST'
   if (f.type === 'weekdays') return (v as number[]).map(d => WEEKDAYS[d]).join(', ')
   if (f.type === 'select') return opts(f.options).find(o => o.value === v)?.label ?? String(v)
   return String(v)

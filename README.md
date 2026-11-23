@@ -89,6 +89,28 @@ A notice board. Everyone except partner logins has an **Updates** page; the menu
 - A post can be pinned to stay at the top, edited, or deleted by whoever posted it (or the admin team and board).
 - This is one-way. There are no replies or private chat.
 
+## Calendar and class times
+
+- A class has days of the week and a **start time in India time**. Only that centre's lead (or an admin) can set
+  or change them. The class volunteer can **Ask to change time** from their home page; the centre lead sees the
+  request at the top of Classes and approves or declines it. Approving updates the class.
+- **Calendar** shows classes, tasks due, training sessions and events in month, week or day view. Class times are
+  shown on each viewer's own clock. Volunteers see their own schedule; centre leads switch between **My schedule**
+  and **Whole centre**; the admin team and board pick any centre or all of them.
+
+## Email reminders
+
+Off until an admin switches them on under **Setup > Email**, and until the sending script is running.
+
+- The database prepares the emails; a Google Apps Script running under the sending Gmail account collects and
+  sends them once an hour. One-time setup steps are at the top of `email/apps-script.gs`.
+- Each person gets at most one summary a day (classes today, attendance not marked yesterday, tasks, unread
+  updates, trainings; for centre leads also waiting time-change requests and the monthly checklist), plus an
+  email when a task is given to them, sent back, or handed in to them.
+- Emails go to the address on the volunteer record, or to one the person sets under **Email reminders** at the
+  bottom of the menu, where they can also switch them off.
+- A free Gmail account may send to about 100 recipients a day from a script; the daily cap in Setup is 90.
+
 ## Tasks
 
 For work that is not a class: a social media post, a report, a lesson plan.

@@ -5,6 +5,7 @@ import { Field, LinkPicker } from '../components/ui'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { MODES, useOptions } from './common'
+import { TimeRequests } from '../components/TimeRequests'
 
 export default function Classes() {
   const a = useAuth()
@@ -23,7 +24,9 @@ export default function Classes() {
     { key: 'subject', label: 'Subject' },
     { key: 'volunteer_id', label: 'Volunteer', type: 'select', options: o.allVolunteers,
       help: 'Only this volunteer can mark the class. Inactive volunteers cannot sign in.' },
-    { key: 'weekdays', label: 'Class days', type: 'weekdays' },
+    { key: 'weekdays', label: 'Class days', type: 'weekdays', locked: !(a.isLead || a.isAdmin) },
+    { key: 'start_time', label: 'Start time (India time)', type: 'time', locked: !(a.isLead || a.isAdmin),
+      help: 'Only the centre lead can set or change the class time. Volunteers can ask for a change from their home page.' },
     { key: 'class_type', label: 'Time of day', type: 'select', options: ['Morning', 'Afternoon', 'Evening'], list: false },
     { key: 'mode', label: 'Mode', type: 'select', options: MODES, required: true, list: false },
     { key: 'duration_min', label: 'Minutes per class', type: 'number', required: true, list: false },
@@ -32,8 +35,12 @@ export default function Classes() {
     { key: 'active', label: 'Active', type: 'bool' },
     { key: '_n', label: 'Students', form: false, list: r => r.class_students?.[0]?.count ?? 0 },
   ]
+  const [all, setAll] = useState<any[]>([])
+  useEffect(() => { supabase.from('classes').select('id, name').limit(2000).then(({ data }) => setAll(data ?? [])) }, [tick])
   return (
     <>
+      <h1>Classes</h1>
+      <TimeRequests classes={all} onChanged={() => setTick(t => t + 1)} />
       <Crud key={tick} title="Classes" table="classes" select="*, class_students(count)" fields={fields} order={{ col: 'name' }}
         canAdd canEdit canDelete={a.isStaff}
         defaults={{ centre_id: o.myCentre, mode: 'Online', duration_min: 60, active: true, weekdays: [], start_date: new Date().toISOString().slice(0, 10) }}

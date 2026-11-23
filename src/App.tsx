@@ -5,6 +5,7 @@ import { LOGO, loginName } from './lib/util'
 import { useState } from 'react'
 import Login from './pages/Login'
 import { ChangeMyPassword } from './components/Logins'
+import { MyMailPrefs } from './components/Mail'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
 import Volunteers from './pages/Volunteers'
@@ -21,6 +22,7 @@ import Setup from './pages/Setup'
 import Users from './pages/Users'
 import Tasks, { useMyOpenTasks } from './pages/Tasks'
 import Updates, { useUnreadUpdates } from './pages/Updates'
+import Calendar from './pages/Calendar'
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', board: 'Board', centre_lead: 'Centre Lead', volunteer: 'Volunteer', partner: 'Partner',
@@ -29,6 +31,7 @@ const ROLE_LABEL: Record<string, string> = {
 export default function App() {
   const a = useAuth()
   const [changing, setChanging] = useState(false)
+  const [mailPrefs, setMailPrefs] = useState(false)
   const updates = useUnreadUpdates(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   const openTasks = useMyOpenTasks(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
@@ -51,6 +54,7 @@ export default function App() {
     ['/students', 'Students', a.canManage],
     ['/volunteers', 'Volunteers', a.canManage],
     ['/classes', 'Classes', a.canManage],
+    ['/calendar', 'Calendar', !a.isPartner],
     ['/updates', updates.unread ? `Updates (${updates.unread})` : 'Updates', !a.isPartner],
     ['/tasks', openTasks ? `Tasks (${openTasks})` : 'Tasks', !a.isPartner],
     ['/attendance', 'Attendance', true],
@@ -79,12 +83,14 @@ export default function App() {
         </nav>
         <div className="who">
           <b>{a.profile?.full_name || loginName(a.profile?.email)}</b>
-          <span>{a.profile?.code ? a.profile.code + ' · ' : ''}{ROLE_LABEL[role]}{a.alsoVolunteer ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
+          <span>{a.profile?.code ? a.profile.code + ' · ' : ''}{a.profile?.title || ROLE_LABEL[role]}{a.alsoVolunteer && !a.profile?.title ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
+          {!a.isPartner && <button className="link" onClick={() => setMailPrefs(true)}>Email reminders</button>}
           <button className="link" onClick={() => setChanging(true)}>Change password</button>
           <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </aside>
       {changing && <ChangeMyPassword onClose={() => setChanging(false)} />}
+      {mailPrefs && <MyMailPrefs onClose={() => setMailPrefs(false)} />}
       <main className="main">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -92,6 +98,7 @@ export default function App() {
           {a.canManage && <Route path="/volunteers" element={<Volunteers />} />}
           {a.canManage && <Route path="/classes" element={<Classes />} />}
           {!a.isPartner && <Route path="/updates" element={<Updates onSeen={updates.refresh} />} />}
+          {!a.isPartner && <Route path="/calendar" element={<Calendar />} />}
           {!a.isPartner && <Route path="/tasks" element={<Tasks />} />}
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/assessments" element={<Assessments />} />

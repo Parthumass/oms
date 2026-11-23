@@ -6,11 +6,14 @@ import { by, pct, WEEKDAYS } from '../lib/util'
 import { Stat } from '../components/ui'
 import { useOptions } from './common'
 import { EXAMS } from './Assessments'
+import { AskTimeChange, TimeRequests } from '../components/TimeRequests'
+import { istLabel, localTime } from './Calendar'
 
 export default function Dashboard() {
   const a = useAuth()
   const o = useOptions()
   const [d, setD] = useState<any>(null)
+  const [ask, setAsk] = useState<any | null>(null)
   useEffect(() => {
     Promise.all([
       supabase.from('students').select('id, gender, status').limit(10000),
@@ -52,11 +55,14 @@ export default function Dashboard() {
               <h2>{c.name}</h2>
               <p className="muted">{o.programs.find(x => x.value === c.program_id)?.label} · {o.allCentres.find(x => x.value === c.centre_id)?.label}</p>
               <p>{c.class_students?.[0]?.count ?? 0} students{c.weekdays?.length ? ' · ' + c.weekdays.map((w: number) => WEEKDAYS[w]).join(', ') : ''}</p>
+              <p>{c.start_time ? <>Starts <b>{istLabel(c.start_time)}</b> <span className="muted">({localTime('2026-01-05', c.start_time).time} your time)</span></> : <span className="muted">Start time not set yet</span>}</p>
               <p>Attendance so far: <b>{pct(p)}</b></p>
-              <div className="row"><Link className="btn primary" to={`/attendance?class=${c.id}`}>Mark attendance</Link><Link className="btn" to={`/assessments?class=${c.id}`}>Assessments</Link></div>
+              <div className="row"><Link className="btn primary" to={`/attendance?class=${c.id}`}>Mark attendance</Link><Link className="btn" to={`/assessments?class=${c.id}`}>Assessments</Link>{c.volunteer_id === a.profile?.volunteer_id && <button onClick={() => setAsk(c)}>Ask to change time</button>}</div>
             </div>
           ))}
         </div>
+        <TimeRequests key={ask ? 'a' : 'b'} classes={d.classes} />
+        {ask && <AskTimeChange cls={ask} onClose={() => setAsk(null)} />}
       </>
     )
   }
