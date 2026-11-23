@@ -159,3 +159,4 @@ table.grid tfoot td { background: #fcfbfd; border-top: 2px solid var(--line); }
 .creds { background: var(--purple-l); border-radius: 8px; padding: 12px 14px; font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
 .auth-help { font-size: 13px; text-align: center; margin: 12px 0 0; }
 .row .grow { min-width: 0; }
+button.danger-link { color: var(--bad); }

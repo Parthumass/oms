@@ -71,10 +71,11 @@ export default function Crud(p: Props) {
     if (res.error) return setFormErr(friendly(res.error))
     setEditing(null); load(); p.onChanged?.()
   }
-  const remove = async () => {
+  const remove = async (row?: any) => {
+    const target = row ?? editing
     if (!window.confirm('Delete this record? This cannot be undone.')) return
-    const { error } = await supabase.from(p.table).delete().eq(pk, editing[pk])
-    if (error) return setFormErr(friendly(error))
+    const { error } = await supabase.from(p.table).delete().eq(pk, target[pk])
+    if (error) return row ? setErr(friendly(error)) : setFormErr(friendly(error))
     setEditing(null); load(); p.onChanged?.()
   }
 
@@ -104,6 +105,7 @@ export default function Crud(p: Props) {
                       <td className="row-actions">
                         {p.actions?.(r, load)}
                         {editable(r) && <button className="link" onClick={() => { setFormErr(''); setEditing({ ...r }) }}>Edit</button>}
+                        {editable(r) && p.canDelete && <button className="link danger-link" onClick={() => remove(r)}>Delete</button>}
                       </td>
                     )}
                   </tr>
@@ -117,7 +119,7 @@ export default function Crud(p: Props) {
             <FormFields fields={p.fields} values={editing} set={(k, v) => setEditing((e: any) => ({ ...e, [k]: v }))} />
             {formErr && <p className="error">{formErr}</p>}
             <div className="actions">
-              {!isNew && p.canDelete && <button type="button" className="danger" onClick={remove}>Delete</button>}
+              {!isNew && p.canDelete && <button type="button" className="danger" onClick={() => remove()}>Delete</button>}
               <span className="grow" />
               <button type="button" onClick={() => setEditing(null)}>Cancel</button>
               <button className="primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>

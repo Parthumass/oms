@@ -9,9 +9,9 @@ export const ROLES: { value: Role; label: string }[] = [
   { value: 'volunteer', label: 'Volunteer' }, { value: 'partner', label: 'Partner' },
 ]
 
-function Handover({ login, password, onClose, isReset }: { login: string; password: string; onClose: () => void; isReset?: boolean }) {
+function Handover({ login, password, code, onClose, isReset }: { login: string; password: string; code?: string; onClose: () => void; isReset?: boolean }) {
   const [copied, setCopied] = useState(false)
-  const text = `Pratyagra portal: ${window.location.origin}${import.meta.env.BASE_URL}\nLogin name: ${login}\nPassword: ${password}`
+  const text = `Pratyagra portal: ${window.location.origin}${import.meta.env.BASE_URL}\n${code ? `ID: ${code}\n` : ''}Login name: ${login}\nPassword: ${password}`
   return (
     <>
       <p className="ok">{isReset ? 'Password changed.' : 'Login created.'} Pass these details on now; the password is not shown again.</p>
@@ -49,11 +49,11 @@ export function CreateLogin(p: {
   })
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState<{ code: string; login: string } | null>(null)
   const set = (k: string, x: any) => setV((s: any) => ({ ...s, [k]: x }))
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setErr(''); setBusy(true)
-    const { error } = await supabase.rpc('create_login', {
+    const { data, error } = await supabase.rpc('create_login', {
       p_login: v.login, p_password: v.password, p_full_name: v.full_name, p_role: v.role,
       p_centre: v.role === 'centre_lead' ? v.centre_id || null : null,
       p_volunteer: v.volunteer_id || null,
@@ -61,17 +61,17 @@ export function CreateLogin(p: {
     })
     setBusy(false)
     if (error) return setErr(friendly(error))
-    setDone(true)
+    setDone(data as any)
   }
   const finish = () => { p.onDone(); p.onClose() }
   return (
     <Modal title="Create login" onClose={done ? finish : p.onClose}>
-      {done ? <Handover login={v.login.trim().toLowerCase()} password={v.password} onClose={finish} /> : (
+      {done ? <Handover login={done.login} code={done.code} password={v.password} onClose={finish} /> : (
         <form onSubmit={save}>
           <div className="form-grid">
             <div className="field"><label htmlFor="lg_name">Full name</label><input id="lg_name" required value={v.full_name} onChange={e => set('full_name', e.target.value)} /></div>
-            <div className="field"><label htmlFor="lg_login">Login name</label><input id="lg_login" required autoComplete="off" value={v.login} onChange={e => set('login', e.target.value)} />
-              <small>What they type to sign in, for example asha.rao</small></div>
+            <div className="field"><label htmlFor="lg_login">Login name (optional)</label><input id="lg_login" autoComplete="off" value={v.login} onChange={e => set('login', e.target.value)} />
+              <small>Leave empty and they sign in with their ID, for example PEF01BD.</small></div>
             <div className="field"><label htmlFor="lg_role">Role</label>
               <select id="lg_role" required disabled={!!p.preset || roles.length === 1} value={v.role} onChange={e => set('role', e.target.value)}>
                 <option value="">Select…</option>{roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div>

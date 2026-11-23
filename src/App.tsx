@@ -73,7 +73,7 @@ export default function App() {
         </nav>
         <div className="who">
           <b>{a.profile?.full_name || loginName(a.profile?.email)}</b>
-          <span>{ROLE_LABEL[role]}{a.alsoVolunteer ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
+          <span>{a.profile?.code ? a.profile.code + ' · ' : ''}{ROLE_LABEL[role]}{a.alsoVolunteer ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
           <button className="link" onClick={() => setChanging(true)}>Change password</button>
           <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>

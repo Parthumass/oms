@@ -4,7 +4,7 @@ import { supabase } from './supabase'
 
 export type Role = 'admin' | 'board' | 'centre_lead' | 'volunteer' | 'partner'
 export type Profile = {
-  id: string; email: string; full_name: string | null; role: Role | null
+  id: string; email: string; code: string | null; full_name: string | null; role: Role | null
   centre_id: string | null; partner_id: string | null; volunteer_id: string | null; active: boolean
 }
 type Lookups = { centres: any[]; programs: any[]; volunteers: any[]; partners: any[] }

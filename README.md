@@ -39,6 +39,28 @@ There is no "forgot password" email: a forgotten password is reset by one of the
 
 Marking a volunteer **Inactive** switches their login off. An admin can switch any login off under Logins.
 
+### IDs
+
+Every person has one ID, given automatically:
+
+| Who | ID looks like |
+|---|---|
+| Admin team and board | `PEF01BD` |
+| Centre leads | `PEF01L` |
+| Partner logins | `PEF01P` |
+| Volunteers | `PEF0001V` (from the volunteer record; `BPL0001V` if added under a centre) |
+| Students | `BPL0001S` (centre code first) |
+
+If no login name is typed when a login is created, the ID is the login name (capitals or not). An admin can
+correct an ID under Logins > Edit.
+
+### Deleting
+
+Lists show a **Delete** link next to **Edit** for anyone allowed to delete that kind of record. Students,
+volunteers, centres, programs, partners and logins can be deleted only by an admin. A record that other records
+depend on (a centre with students, for example) cannot be deleted; mark it inactive instead. Deleting a login
+removes the ability to sign in and keeps everything that person entered.
+
 ## Attendance
 
 Pick a class and a month. Each class date is a column. Click a box to cycle: **X** (present), **AB** (absent), blank.

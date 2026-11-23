@@ -132,6 +132,20 @@ t "volunteer cannot reset anyone" 4 "select public.reset_login_password('0000000
 t "board cannot reset an admin" a "select public.reset_login_password('00000000-0000-0000-0000-000000000001','Fresh-pass-22')" "*not allowed*"
 t "first-admin helper is not callable by users" 1 "select app.create_first_admin('sneaky','Passw0rd-1','X')" "*permission denied*"
 t "internal insert is not callable by users" 4 "select app.insert_login('a@b.co','Passw0rd-1','X','admin',null,null,null)" "*permission denied*"
+# --- person IDs and deleting a login (migration 004) ---
+tsu "volunteer login takes the volunteer code as its ID" "select code from profiles where email='new.vol@portal.pratyagra.org'" "BPL0003V"
+tsu "centre lead gets an L ID" "select code from profiles where email='lead.two@portal.pratyagra.org'" "PEF01L"
+tsu "admin gets a BD ID" "select code from profiles where email='second.admin@portal.pratyagra.org'" "PEF01BD"
+$P -c "update profiles set code='PEF02BD' where email='admin@x.org'" >/dev/null
+t "no login name: the ID becomes the login name, taken IDs are skipped" a "select public.create_login('','Passw0rd-1','Board Three','board')->>'login'" "pef03bd"
+t "partner gets a P ID" 1 "select public.create_login(null,'Passw0rd-1','Partner One','partner',null,null,'00000000-0000-0000-0000-0000000000d1')->>'code'" "PEF01P"
+t "IDs are unique" 1 "update profiles set code='PEF03BD' where email='board@x.org' returning 1" "*duplicate key*"
+t "lead cannot delete a login" 2 "select public.delete_login((select id from profiles where email='new.vol@portal.pratyagra.org'))" "*Only an admin*"
+t "board cannot delete a login" a "select public.delete_login((select id from profiles where email='new.vol@portal.pratyagra.org'))" "*Only an admin*"
+t "admin cannot delete own login" 1 "select public.delete_login('00000000-0000-0000-0000-000000000001')" "*your own login*"
+t "admin deletes a login made by mistake" 1 "select public.delete_login((select id from profiles where email='pef03bd@portal.pratyagra.org')) is null" "f"
+tsu "deleted login is gone from both tables" "select (select count(*) from profiles where email='pef03bd@portal.pratyagra.org') + (select count(*) from auth.users where email='pef03bd@portal.pratyagra.org')" "0"
+t "ID helpers are not callable by users" 4 "select app.next_staff_code('BD')" "*permission denied*"
 # anon
 got=$($P -c "set role anon; select count(*) from students" 2>&1 | tr '\n' ' ')
 [[ "$got" == *"permission denied"* ]] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL anon: $got"; }
