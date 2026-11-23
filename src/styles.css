@@ -175,3 +175,12 @@ button.danger-link { color: var(--bad); }
 .file img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 .add-item { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .add-item .actions { margin-top: 10px; }
+
+/* Updates */
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; } .title-row h1 { margin: 0; }
+.feed { display: flex; flex-direction: column; max-width: 820px; }
+.post.new { border-left: 4px solid var(--orange); }
+.post-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.post-body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 10px 0; }
+.post-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; font-size: 13px; margin: 8px 0 0; }
+.pin { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; background: var(--purple-l); color: var(--purple); border-radius: 4px; padding: 2px 6px; margin-right: 8px; vertical-align: middle; }

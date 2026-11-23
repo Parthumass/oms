@@ -77,6 +77,18 @@ A substitute can mark only the date they were named on.
   having completed that training.
 - Volunteers see their own list, with due dates and material links, and can leave feedback on sessions they attended.
 
+## Updates
+
+A notice board. Everyone except partner logins has an **Updates** page; the menu shows how many are unread.
+
+- **Posting:** admins and board members can post to everyone, to a team (any mix of Volunteers, Centre leads,
+  Board, Admin team, Partners, optionally limited to one centre), or to people they tick by name. Centre leads can
+  post to the volunteers and leads of their own centre, or to selected volunteers of their centre.
+- **Reading:** a post is marked as read when the person opens the Updates page. The person who posted it, and the
+  admin team and board, see a "Seen by" count.
+- A post can be pinned to stay at the top, edited, or deleted by whoever posted it (or the admin team and board).
+- This is one-way. There are no replies or private chat.
+
 ## Tasks
 
 For work that is not a class: a social media post, a report, a lesson plan.
