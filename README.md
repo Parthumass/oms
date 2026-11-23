@@ -77,6 +77,19 @@ A substitute can mark only the date they were named on.
   having completed that training.
 - Volunteers see their own list, with due dates and material links, and can leave feedback on sessions they attended.
 
+## Tasks
+
+For work that is not a class: a social media post, a report, a lesson plan.
+
+- **Giving a task:** admins and board members can give a task to anyone with a login. Centre leads can give tasks
+  to volunteers of their own centre. A task has a title, details, a type (Social media, Program, General) and a due date.
+- **Doing it:** the person opens the task from **Tasks** (the menu shows how many are waiting), adds notes, links
+  and files, then clicks **Hand in**.
+- **Reviewing:** whoever gave the task can **Ask for changes** with a note, or **Mark done**.
+- **Who sees a task:** the person it was given to, whoever gave it, and the admin team and board. Nobody else.
+- **Files** are kept in a private Supabase Storage bucket called `task-files`, up to 20 MB each. The free plan
+  includes 1 GB of storage in total, so share large videos as a link instead.
+
 ## One-time setup
 
 1. **Database.** In a new Supabase project, open SQL Editor, paste `supabase/schema.sql`, and run it.

@@ -19,6 +19,7 @@ import Checklist from './pages/Checklist'
 import Reports from './pages/Reports'
 import Setup from './pages/Setup'
 import Users from './pages/Users'
+import Tasks, { useMyOpenTasks } from './pages/Tasks'
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', board: 'Board', centre_lead: 'Centre Lead', volunteer: 'Volunteer', partner: 'Partner',
@@ -27,6 +28,7 @@ const ROLE_LABEL: Record<string, string> = {
 export default function App() {
   const a = useAuth()
   const [changing, setChanging] = useState(false)
+  const openTasks = useMyOpenTasks(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
   if (a.loading) return <Center><p className="muted">Loading…</p></Center>
   if (!a.session) return <Login />
@@ -47,6 +49,7 @@ export default function App() {
     ['/students', 'Students', a.canManage],
     ['/volunteers', 'Volunteers', a.canManage],
     ['/classes', 'Classes', a.canManage],
+    ['/tasks', openTasks ? `Tasks (${openTasks})` : 'Tasks', !a.isPartner],
     ['/attendance', 'Attendance', true],
     ['/assessments', 'Assessments', true],
     ['/holistic', 'Holistic assessment', !a.isPartner],
@@ -85,6 +88,7 @@ export default function App() {
           {a.canManage && <Route path="/students" element={<Students />} />}
           {a.canManage && <Route path="/volunteers" element={<Volunteers />} />}
           {a.canManage && <Route path="/classes" element={<Classes />} />}
+          {!a.isPartner && <Route path="/tasks" element={<Tasks />} />}
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/assessments" element={<Assessments />} />
           {!a.isPartner && <Route path="/holistic" element={<Holistic />} />}

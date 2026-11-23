@@ -160,3 +160,18 @@ table.grid tfoot td { background: #fcfbfd; border-top: 2px solid var(--line); }
 .auth-help { font-size: 13px; text-align: center; margin: 12px 0 0; }
 .row .grow { min-width: 0; }
 button.danger-link { color: var(--bad); }
+
+/* Tasks */
+.pill.info { color: #1d4f91; background: #e4eefb; } .pill.todo { color: #8a4b00; background: #fff4e5; }
+.late { color: var(--bad); font-weight: 600; }
+.task-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: 0 0 10px; }
+.task-details { white-space: pre-wrap; background: #fcfbfd; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0 0 6px; }
+.modal h3 { font-size: 14px; margin: 16px 0 8px; }
+.thread { display: flex; flex-direction: column; gap: 8px; }
+.item { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+.item p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.item-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; } .item-head .link { margin-left: auto; }
+.file { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.file img { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+.add-item { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.add-item .actions { margin-top: 10px; }
