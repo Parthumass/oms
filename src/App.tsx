@@ -1,0 +1,101 @@
+import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from './lib/auth'
+import { configured, supabase } from './lib/supabase'
+import Login, { NewPassword } from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Students from './pages/Students'
+import Volunteers from './pages/Volunteers'
+import Classes from './pages/Classes'
+import Attendance from './pages/Attendance'
+import Assessments from './pages/Assessments'
+import Holistic from './pages/Holistic'
+import Training from './pages/Training'
+import Events from './pages/Events'
+import OtherTime from './pages/OtherTime'
+import Checklist from './pages/Checklist'
+import Reports from './pages/Reports'
+import Setup from './pages/Setup'
+import Users from './pages/Users'
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin', board: 'Board', centre_lead: 'Centre Lead', volunteer: 'Volunteer', partner: 'Partner',
+}
+
+export default function App() {
+  const a = useAuth()
+  if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
+  if (a.loading) return <Center><p className="muted">Loading…</p></Center>
+  if (a.recovering) return <NewPassword />
+  if (!a.session) return <Login />
+  const role = a.profile?.active ? a.profile.role : null
+  if (!role) {
+    return (
+      <Center>
+        <h1>Waiting for access</h1>
+        <p>You are signed in as <b>{a.session.user.email}</b>, but this email has not been given a role yet.</p>
+        <p className="muted">Ask your centre lead or the Pratyagra admin team to add you, then sign in again.</p>
+        <button onClick={() => supabase.auth.signOut()}>Sign out</button>
+      </Center>
+    )
+  }
+
+  const nav: [string, string, boolean][] = [
+    ['/', a.isVolunteer ? 'My classes' : 'Dashboard', true],
+    ['/students', 'Students', a.canManage],
+    ['/volunteers', 'Volunteers', a.canManage],
+    ['/classes', 'Classes', a.canManage],
+    ['/attendance', 'Attendance', true],
+    ['/assessments', 'Assessments', true],
+    ['/holistic', 'Holistic assessment', !a.isPartner],
+    ['/training', 'Training', !a.isPartner],
+    ['/events', 'Events', !a.isPartner],
+    ['/other-time', 'Other volunteer time', !a.isPartner],
+    ['/checklist', 'Monthly checklist', a.canManage],
+    ['/reports', 'Reports', !a.isVolunteer],
+    ['/setup', 'Setup', a.isAdmin],
+    ['/users', 'Logins', a.isAdmin],
+  ]
+  const centre = a.lookups.centres.find(c => c.id === a.profile?.centre_id)
+  const partner = a.lookups.partners.find(x => x.id === a.profile?.partner_id)
+
+  return (
+    <div className="shell">
+      <aside className="side">
+        <div className="brand"><img src="/logo.png" alt="" onError={e => (e.currentTarget.style.display = 'none')} /><span>Pratyagra<small>Operations Portal</small></span></div>
+        <nav>
+          {nav.filter(n => n[2]).map(([to, label]) => (
+            <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'on' : '')}>{label}</NavLink>
+          ))}
+        </nav>
+        <div className="who">
+          <b>{a.profile?.full_name || a.profile?.email}</b>
+          <span>{ROLE_LABEL[role]}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
+          <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
+        </div>
+      </aside>
+      <main className="main">
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          {a.canManage && <Route path="/students" element={<Students />} />}
+          {a.canManage && <Route path="/volunteers" element={<Volunteers />} />}
+          {a.canManage && <Route path="/classes" element={<Classes />} />}
+          <Route path="/attendance" element={<Attendance />} />
+          <Route path="/assessments" element={<Assessments />} />
+          {!a.isPartner && <Route path="/holistic" element={<Holistic />} />}
+          {!a.isPartner && <Route path="/training" element={<Training />} />}
+          {!a.isPartner && <Route path="/events" element={<Events />} />}
+          {!a.isPartner && <Route path="/other-time" element={<OtherTime />} />}
+          {a.canManage && <Route path="/checklist" element={<Checklist />} />}
+          {!a.isVolunteer && <Route path="/reports" element={<Reports />} />}
+          {a.isAdmin && <Route path="/setup" element={<Setup />} />}
+          {a.isAdmin && <Route path="/users" element={<Users />} />}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
+function Center({ children }: { children: React.ReactNode }) {
+  return <div className="auth-page"><div className="auth-card">{children}</div></div>
+}
