@@ -131,17 +131,17 @@ function HoursReport() {
   return (
     <section className="card">
       <div className="card-head"><h2>Volunteer hours <span className="count">{shown.length}</span></h2>
-        <button onClick={() => downloadCsv('volunteer-hours', ['Volunteer', 'Code', 'Centre', 'Status', 'Classes taken', 'Teaching hours', 'Events', 'Event hours', 'Other hours', 'Total hours', 'Trainings attended', 'Core trainings done'],
-          shown.map(r => [r.full_name, r.code, centre(r.centre_id), r.status, r.classes_taken, hours(r.teaching_min), r.events_attended, hours(r.event_min), hours(r.other_min), hours(total(r)), r.trainings_attended, r.core_trainings_done]))}>Export</button></div>
+        <button onClick={() => downloadCsv('volunteer-hours', ['Volunteer', 'Code', 'Centre', 'Status', 'Classes taken', 'Teaching hours', 'Events', 'Event hours', 'Other hours', 'Total hours', 'Trainings assigned', 'Trainings done', 'Core trainings done'],
+          shown.map(r => [r.full_name, r.code, centre(r.centre_id), r.status, r.classes_taken, hours(r.teaching_min), r.events_attended, hours(r.event_min), hours(r.other_min), hours(total(r)), r.trainings_assigned, r.trainings_done, r.core_trainings_done]))}>Export</button></div>
       <div className="table-wrap"><table>
-        <thead><tr><th>Volunteer</th><th>Centre</th><th className="num">Classes</th><th className="num">Teaching h</th><th className="num">Event h</th><th className="num">Other h</th><th className="num">Total h</th><th className="num">Core trainings</th></tr></thead>
+        <thead><tr><th>Volunteer</th><th>Centre</th><th className="num">Classes</th><th className="num">Teaching h</th><th className="num">Event h</th><th className="num">Other h</th><th className="num">Total h</th><th className="num">Trainings done</th></tr></thead>
         <tbody>
           {shown.length === 0 && <tr><td colSpan={8} className="muted">No volunteers yet.</td></tr>}
           {shown.map(r => (
             <tr key={r.volunteer_id}>
               <td><b>{r.full_name}</b> <small className="muted">{r.code}{r.status === 'Inactive' ? ' · inactive' : ''}</small></td><td>{centre(r.centre_id)}</td>
               <td className="num">{r.classes_taken}</td><td className="num">{hours(r.teaching_min)}</td><td className="num">{hours(r.event_min)}</td>
-              <td className="num">{hours(r.other_min)}</td><td className="num"><b>{hours(total(r))}</b></td><td className="num">{r.core_trainings_done}</td>
+              <td className="num">{hours(r.other_min)}</td><td className="num"><b>{hours(total(r))}</b></td><td className="num">{r.trainings_done}/{r.trainings_assigned}</td>
             </tr>
           ))}
         </tbody>

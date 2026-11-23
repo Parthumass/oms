@@ -18,6 +18,11 @@ Built with React (Vite) on Supabase (Postgres + login). It is a static site, so 
 These rules are enforced in the database (`supabase/schema.sql`, row-level security), not just in the screens.
 Someone who signs up without being approved sees a "Waiting for access" page and no data.
 
+**One person, two roles.** Each login has one main role. An admin, board member or centre lead who also teaches
+can be linked to their volunteer record under **Logins** (the *Volunteer record* field). The same login then also
+gets a **My training** page and counts as that volunteer for hours, training and feedback. Being centre lead of two
+centres on one login is not supported.
+
 ## How people get a login
 
 1. An admin approves an email under **Logins > Approved emails** (any role), or a centre lead clicks
@@ -33,9 +38,20 @@ Pick a class and a month. Each class date is a column. Click a box to cycle: **X
 Click a date heading for topics covered, a substitute volunteer, or to fill all blanks at once.
 A substitute can mark only the date they were named on.
 
+## Training
+
+- **Trainings** is the catalogue. The admin team adds a training (name, what it covers, a link to the material).
+- **Assign** chooses which volunteers have to do it. Centre leads can assign and tick off their own volunteers
+  (volunteers whose *Home centre* is their centre).
+- **Tracker** shows every volunteer against every training: not assigned, To do, or Done. Click to change.
+- **Sessions** are live meetings. If a session is linked to a training, everyone marked present is recorded as
+  having completed that training.
+- Volunteers see their own list, with due dates and material links, and can leave feedback on sessions they attended.
+
 ## One-time setup
 
 1. **Database.** In a new Supabase project, open SQL Editor, paste `supabase/schema.sql`, and run it.
+   Then run each file in `supabase/migrations/` in order.
 2. **Keep "Confirm email" switched on** (Authentication > Sign In / Providers > Email). The approval system relies on it:
    with it off, anyone who knows an approved email could claim that login.
 3. **Set up your own email sender** (Authentication > Emails > SMTP Settings). Supabase's built-in sender only
@@ -57,7 +73,9 @@ the database rules. Never put the Supabase **secret** key or database password i
 
 - **Cloudflare Pages / Vercel / Netlify:** connect the GitHub repository. Build command `npm run build`,
   output folder `dist`. `public/_redirects` and `vercel.json` already send every path to the app.
-- Put your logo at `public/logo.png` and it appears on the sign-in page and in the sidebar.
+- The logo is `public/logo.jpg`. Replace that file to change it.
+- If the site is served from a sub-folder (GitHub Pages serves a repository at `/repo-name/`), build with
+  `VITE_BASE=/repo-name/ npm run build`.
 
 ## Running it on your computer
 
@@ -77,6 +95,7 @@ npm run dev
 ## Where things are
 
 - `supabase/schema.sql` : tables, access rules, report views
+- `supabase/migrations/` : later database changes, run in order after `schema.sql`
 - `supabase/tests/` : checks that each role sees only what it should
 - `src/pages/` : one file per screen
 - `src/components/Crud.tsx` : the shared list-and-form used by most screens

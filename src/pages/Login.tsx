@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { LOGO } from '../lib/util'
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <img src="/logo.png" alt="Pratyagra Education Foundation" onError={e => (e.currentTarget.style.display = 'none')} />
-          <h1>Pratyagra</h1>
+          <img src={LOGO} alt="Pratyagra Education Foundation" />
           <p>Operations Portal</p>
         </div>
         {children}
@@ -29,7 +29,7 @@ export default function Login() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr(''); setMsg(''); setBusy(true)
-    const redirect = window.location.origin
+    const redirect = window.location.origin + import.meta.env.BASE_URL
     if (mode === 'in') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setErr(error.message === 'Invalid login credentials' ? 'Wrong email or password.' : error.message)

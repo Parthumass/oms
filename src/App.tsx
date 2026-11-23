@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { configured, supabase } from './lib/supabase'
+import { LOGO } from './lib/util'
 import Login, { NewPassword } from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
@@ -9,7 +10,7 @@ import Classes from './pages/Classes'
 import Attendance from './pages/Attendance'
 import Assessments from './pages/Assessments'
 import Holistic from './pages/Holistic'
-import Training from './pages/Training'
+import Training, { MyTraining } from './pages/Training'
 import Events from './pages/Events'
 import OtherTime from './pages/OtherTime'
 import Checklist from './pages/Checklist'
@@ -48,6 +49,7 @@ export default function App() {
     ['/assessments', 'Assessments', true],
     ['/holistic', 'Holistic assessment', !a.isPartner],
     ['/training', 'Training', !a.isPartner],
+    ['/my-training', 'My training', a.alsoVolunteer],
     ['/events', 'Events', !a.isPartner],
     ['/other-time', 'Other volunteer time', !a.isPartner],
     ['/checklist', 'Monthly checklist', a.canManage],
@@ -61,7 +63,7 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand"><img src="/logo.png" alt="" onError={e => (e.currentTarget.style.display = 'none')} /><span>Pratyagra<small>Operations Portal</small></span></div>
+        <div className="brand"><img src={LOGO} alt="" /><span>Pratyagra<small>Operations Portal</small></span></div>
         <nav>
           {nav.filter(n => n[2]).map(([to, label]) => (
             <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => (isActive ? 'on' : '')}>{label}</NavLink>
@@ -69,7 +71,7 @@ export default function App() {
         </nav>
         <div className="who">
           <b>{a.profile?.full_name || a.profile?.email}</b>
-          <span>{ROLE_LABEL[role]}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
+          <span>{ROLE_LABEL[role]}{a.alsoVolunteer ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
           <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </aside>
@@ -83,6 +85,7 @@ export default function App() {
           <Route path="/assessments" element={<Assessments />} />
           {!a.isPartner && <Route path="/holistic" element={<Holistic />} />}
           {!a.isPartner && <Route path="/training" element={<Training />} />}
+          {a.alsoVolunteer && <Route path="/my-training" element={<MyTraining />} />}
           {!a.isPartner && <Route path="/events" element={<Events />} />}
           {!a.isPartner && <Route path="/other-time" element={<OtherTime />} />}
           {a.canManage && <Route path="/checklist" element={<Checklist />} />}

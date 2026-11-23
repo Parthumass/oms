@@ -15,7 +15,7 @@ export default function Users() {
   const scope: Field[] = [
     { key: 'role', label: 'Role', type: 'select', options: ROLES },
     { key: 'centre_id', label: 'Centre (centre lead)', type: 'select', options: o.allCentres },
-    { key: 'volunteer_id', label: 'Volunteer record (volunteer)', type: 'select', options: o.allVolunteers },
+    { key: 'volunteer_id', label: 'Volunteer record', help: 'Needed for the Volunteer role. Also set it for an admin, board member or centre lead who teaches, so one login does both.', type: 'select', options: o.allVolunteers },
     { key: 'partner_id', label: 'Partner (partner)', type: 'select', options: o.partners },
   ]
   return (
@@ -24,7 +24,7 @@ export default function Users() {
       <Tabs tabs={['Logins', 'Approved emails']} value={tab} onChange={setTab} />
       {tab === 'Logins' && (
         <Crud key={tick} title="Logins" table="profiles" order={{ col: 'email' }} canEdit
-          hint="Everyone who has signed up. A login with no role is waiting and can see nothing. Switch Active off to block someone."
+          hint="Everyone who has signed up. A login with no role is waiting and can see nothing. Each login has one main role; link a volunteer record as well if that person also teaches. Switch Active off to block someone."
           fields={[
             { key: 'email', label: 'Email', locked: true },
             { key: 'full_name', label: 'Name' },

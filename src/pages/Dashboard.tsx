@@ -43,7 +43,7 @@ export default function Dashboard() {
           <Stat label="My students" value={calc.active.length} />
           <Stat label="Classes taken" value={d.hours?.classes_taken ?? 0} />
           <Stat label="Teaching hours" value={((d.hours?.teaching_min ?? 0) / 60).toFixed(1)} />
-          <Stat label="Core trainings done" value={d.hours?.core_trainings_done ?? 0} />
+          <Stat label="Trainings done" value={`${d.hours?.trainings_done ?? 0} of ${d.hours?.trainings_assigned ?? 0}`} />
         </div>
         {d.classes.length === 0 && <p className="card pad muted">No class has been assigned to you yet. Your centre lead will add you to one.</p>}
         <div className="cards">

@@ -90,6 +90,23 @@ t "leadB cannot invite ODS volunteer" 2 "insert into invites(email,role,voluntee
 t "leadB deactivates vol2" 2 "update volunteers set status='Inactive' where id='00000000-0000-0000-0000-0000000000e2' returning status" "Inactive"
 t "vol2 now sees nothing" 5 "select count(*) from students" "0"
 t "vol2 no classes" 5 "select count(*) from classes" "0"
+# --- combined roles and training assignments (migration 002) ---
+t "leadB assigns training to own volunteer" 2 "insert into training_assignments(topic_id,volunteer_id) select id,'00000000-0000-0000-0000-0000000000e1' from training_topics where sort=2 returning 1" "1"
+t "leadB cannot assign to ODS volunteer" 2 "insert into training_assignments(topic_id,volunteer_id) select id,'00000000-0000-0000-0000-0000000000e3' from training_topics where sort=2" "*row-level security*"
+t "vol1 sees own assignment only" 4 "select count(*) from training_assignments" "1"
+t "vol1 cannot complete own assignment" 4 "update training_assignments set completed_on=current_date returning 1" ""
+t "vol cannot self-assign" 4 "insert into training_assignments(topic_id,volunteer_id) select id,'00000000-0000-0000-0000-0000000000e1' from training_topics where sort=3" "*row-level security*"
+t "partner sees no assignments" 7 "select count(*) from training_assignments" "0"
+t "admin assigns anyone" 1 "insert into training_assignments(topic_id,volunteer_id) select id,'00000000-0000-0000-0000-0000000000e3' from training_topics where sort=2 returning 1" "1"
+t "attendance at a topic session completes it" 1 "insert into training_sessions(id,title,session_date,topic_id) select '00000000-0000-0000-0000-000000000082','Core 2','2026-11-20',id from training_topics where sort=2; insert into training_attendance(session_id,volunteer_id) values ('00000000-0000-0000-0000-000000000082','00000000-0000-0000-0000-0000000000e1'); select completed_on from training_assignments a join training_topics t on t.id=a.topic_id where t.sort=2 and volunteer_id='00000000-0000-0000-0000-0000000000e1'" "2026-11-20"
+t "hours view counts trainings" 1 "select trainings_assigned||'/'||trainings_done||'/'||core_trainings_done from volunteer_hours where code='BPL0001V'" "1/1/1"
+# a centre lead who also teaches: link leadO's login to volunteer e3
+$P -c "update profiles set volunteer_id=null, role=null where email='v3@x.org'" -c "update profiles set volunteer_id='00000000-0000-0000-0000-0000000000e3' where email='leado@x.org'" >/dev/null
+t "lead+volunteer logs own time" 3 "insert into non_teaching_logs(volunteer_id,topic,duration_min) values ('00000000-0000-0000-0000-0000000000e3','Planning',30) returning 1" "1"
+t "lead+volunteer gives training feedback as self" 3 "insert into training_sessions(id,title,session_date,centre_id) values ('00000000-0000-0000-0000-000000000083','ODS meet','2026-11-21','00000000-0000-0000-0000-0000000000b2'); insert into training_feedback(session_id,volunteer_id,overall) values ('00000000-0000-0000-0000-000000000083','00000000-0000-0000-0000-0000000000e3',4) returning 1" "1"
+t "lead+volunteer still limited to own centre" 3 "select count(*) from students where centre_id='00000000-0000-0000-0000-0000000000b1' and full_name not in (select full_name from students s join class_students cs on cs.student_id=s.id join sessions se on se.class_id=cs.class_id where se.taught_by='00000000-0000-0000-0000-0000000000e3')" "0"
+t "inactive volunteer record does not lock a lead login" 1 "update volunteers set status='Inactive' where id='00000000-0000-0000-0000-0000000000e3'; select active from profiles where email='leado@x.org'" "t"
+t "but volunteer powers stop" 3 "update training_feedback set overall=5 returning 1" ""
 # anon
 got=$($P -c "set role anon; select count(*) from students" 2>&1 | tr '\n' ' ')
 [[ "$got" == *"permission denied"* ]] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL anon: $got"; }

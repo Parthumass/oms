@@ -13,6 +13,8 @@ type Ctx = {
   lookups: Lookups; reloadLookups: () => Promise<void>; doneRecovering: () => void
   isStaff: boolean; isAdmin: boolean; isLead: boolean; isVolunteer: boolean; isPartner: boolean
   canManage: boolean
+  /** An admin, board member or centre lead whose login is also linked to a volunteer record. */
+  alsoVolunteer: boolean
 }
 const empty: Lookups = { centres: [], programs: [], volunteers: [], partners: [] }
 const AuthCtx = createContext<Ctx>(null as any)
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isVolunteer: role === 'volunteer',
     isPartner: role === 'partner',
     canManage: role === 'admin' || role === 'board' || role === 'centre_lead',
+    alsoVolunteer: !!role && role !== 'volunteer' && !!profile?.volunteer_id,
   }
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

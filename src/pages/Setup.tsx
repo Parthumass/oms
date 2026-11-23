@@ -13,7 +13,7 @@ export default function Setup() {
   return (
     <>
       <h1>Setup</h1>
-      <Tabs tabs={['Centres', 'Programs', 'Partners', 'Training topics']} value={tab} onChange={setTab} />
+      <Tabs tabs={['Centres', 'Programs', 'Partners']} value={tab} onChange={setTab} />
       {tab === 'Centres' && (
         <Crud title="Centres" table="centres" order={{ col: 'name' }} canAdd canEdit canDelete onChanged={a.reloadLookups}
           defaults={{ active: true }} clean={v => ({ ...v, code: (v.code ?? '').toUpperCase() })}
@@ -36,17 +36,6 @@ export default function Setup() {
           hint="A partner login can only read attendance and assessments for the centres or programs you list under Access."
           fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]}
           actions={r => <button className="link" onClick={() => setScope(r)}>Access</button>} />
-      )}
-      {tab === 'Training topics' && (
-        <Crud title="Training topics" table="training_topics" order={{ col: 'sort' }} canAdd canEdit canDelete
-          defaults={{ is_core: false, active: true, sort: 10 }}
-          hint="Topics marked Core are the required trainings tracked for every volunteer."
-          fields={[
-            { key: 'name', label: 'Topic', required: true },
-            { key: 'is_core', label: 'Core (required)', type: 'bool' },
-            { key: 'sort', label: 'Order', type: 'number', required: true },
-            { key: 'active', label: 'Active', type: 'bool' },
-          ]} />
       )}
       {scope && <Scopes partner={scope} onClose={() => setScope(null)} />}
     </>

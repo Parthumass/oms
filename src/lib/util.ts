@@ -1,3 +1,4 @@
+export const LOGO = import.meta.env.BASE_URL + 'logo.jpg'
 export const today = () => { const d = new Date(); return iso(d) }
 export const iso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
