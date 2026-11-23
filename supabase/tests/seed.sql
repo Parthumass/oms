@@ -7,21 +7,22 @@ insert into volunteers(id,full_name,centre_id,email) values
  ('00000000-0000-0000-0000-0000000000e1','Vol One','00000000-0000-0000-0000-0000000000b1','v1@x.org'),
  ('00000000-0000-0000-0000-0000000000e2','Vol Two','00000000-0000-0000-0000-0000000000b1','v2@x.org'),
  ('00000000-0000-0000-0000-0000000000e3','Vol Three','00000000-0000-0000-0000-0000000000b2','v3@x.org');
-insert into invites(email,role,centre_id,partner_id,volunteer_id) values
- ('admin@x.org','admin',null,null,null),('board@x.org','board',null,null,null),
- ('leadb@x.org','centre_lead','00000000-0000-0000-0000-0000000000b1',null,null),
- ('leado@x.org','centre_lead','00000000-0000-0000-0000-0000000000b2',null,null),
- ('v1@x.org','volunteer',null,null,'00000000-0000-0000-0000-0000000000e1'),
- ('v2@x.org','volunteer',null,null,'00000000-0000-0000-0000-0000000000e2'),
- ('v3@x.org','volunteer',null,null,'00000000-0000-0000-0000-0000000000e3'),
- ('pu@x.org','partner',null,'00000000-0000-0000-0000-0000000000d1',null),
- ('ps@x.org','partner',null,'00000000-0000-0000-0000-0000000000d2',null);
 insert into auth.users(id,email) values
  ('00000000-0000-0000-0000-000000000001','admin@x.org'),('00000000-0000-0000-0000-000000000002','leadb@x.org'),
  ('00000000-0000-0000-0000-000000000003','leado@x.org'),('00000000-0000-0000-0000-000000000004','V1@x.org'),
  ('00000000-0000-0000-0000-000000000005','v2@x.org'),('00000000-0000-0000-0000-000000000006','v3@x.org'),
  ('00000000-0000-0000-0000-000000000007','pu@x.org'),('00000000-0000-0000-0000-000000000008','ps@x.org'),
  ('00000000-0000-0000-0000-000000000009','stranger@x.org'),('00000000-0000-0000-0000-00000000000a','board@x.org');
+-- roles (in the portal these are set when a login is created)
+update profiles set role='admin' where email='admin@x.org';
+update profiles set role='board' where email='board@x.org';
+update profiles set role='centre_lead', centre_id='00000000-0000-0000-0000-0000000000b1' where email='leadb@x.org';
+update profiles set role='centre_lead', centre_id='00000000-0000-0000-0000-0000000000b2' where email='leado@x.org';
+update profiles set role='volunteer', volunteer_id='00000000-0000-0000-0000-0000000000e1' where email='v1@x.org';
+update profiles set role='volunteer', volunteer_id='00000000-0000-0000-0000-0000000000e2' where email='v2@x.org';
+update profiles set role='volunteer', volunteer_id='00000000-0000-0000-0000-0000000000e3' where email='v3@x.org';
+update profiles set role='partner', partner_id='00000000-0000-0000-0000-0000000000d1' where email='pu@x.org';
+update profiles set role='partner', partner_id='00000000-0000-0000-0000-0000000000d2' where email='ps@x.org';
 -- students: 3 in BPL, 2 in ODS
 insert into students(id,full_name,centre_id) values
  ('00000000-0000-0000-0000-0000000000f1','Stu B1','00000000-0000-0000-0000-0000000000b1'),

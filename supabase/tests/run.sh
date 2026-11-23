@@ -3,12 +3,12 @@
 P="psql -h 127.0.0.1 -p 54329 -U postgres -d pef -At -q"
 q(){ $P -c "set role authenticated; set request.jwt.claim.sub='00000000-0000-0000-0000-00000000000$1'; $2" 2>&1 | tr '\n' ' '; }
 pass=0; fail=0
+tsu(){ got="$($P -c "$2" 2>&1 | tr '\n' ' ' | sed 's/ *$//')"; if [[ "$got" == $3 ]]; then pass=$((pass+1)); else fail=$((fail+1)); echo "FAIL [$1] got: $got | want: $3"; fi; }
 t(){ got="$(q "$2" "$3" | sed 's/ *$//')"; if [[ "$got" == $4 ]]; then pass=$((pass+1)); else fail=$((fail+1)); echo "FAIL [$1] got: $got | want: $4"; fi; }
 S="select string_agg(full_name,',' order by full_name) from students"
 t "codes"            1 "select string_agg(code,',' order by code) from students" "BPL0001S,BPL0002S,BPL0003S,ODS0001S,ODS0002S"
 t "vol codes"        1 "select string_agg(code,',' order by code) from volunteers" "BPL0001V,BPL0002V,ODS0001V"
 t "roles assigned"   1 "select count(*) from profiles where role is not null" "9"
-t "invites consumed" 1 "select count(*) from invites" "0"
 t "admin students"   1 "$S" "Stu B1,Stu B2,Stu B3,Stu O1,Stu O2"
 t "board students"   a "select count(*) from students" "5"
 t "leadB students"   2 "$S" "Stu B1,Stu B2,Stu B3"
@@ -84,7 +84,7 @@ t "leadB checklist" 2 "insert into monthly_checklists(centre_id,month) values ('
 t "leadO cannot see BPL checklist" 3 "select count(*) from monthly_checklists" "0"
 t "vol no checklist" 4 "select count(*) from monthly_checklists" "0"
 # lead invites
-t "leadB invite own volunteer" 2 "insert into volunteers(id,full_name,centre_id) values ('00000000-0000-0000-0000-0000000000e9','New Vol','00000000-0000-0000-0000-0000000000b1'); insert into invites(email,role,volunteer_id) values ('new@x.org','volunteer','00000000-0000-0000-0000-0000000000e9') returning 1" "1"
+t "leadB adds own volunteer" 2 "insert into volunteers(id,full_name,centre_id) values ('00000000-0000-0000-0000-0000000000e9','New Vol','00000000-0000-0000-0000-0000000000b1') returning 1" "1"
 t "leadB cannot invite ODS volunteer" 2 "insert into invites(email,role,volunteer_id) values ('z@x.org','volunteer','00000000-0000-0000-0000-0000000000e3')" "*row-level security*"
 # deactivate volunteer -> login off
 t "leadB deactivates vol2" 2 "update volunteers set status='Inactive' where id='00000000-0000-0000-0000-0000000000e2' returning status" "Inactive"
@@ -107,6 +107,31 @@ t "lead+volunteer gives training feedback as self" 3 "insert into training_sessi
 t "lead+volunteer still limited to own centre" 3 "select count(*) from students where centre_id='00000000-0000-0000-0000-0000000000b1' and full_name not in (select full_name from students s join class_students cs on cs.student_id=s.id join sessions se on se.class_id=cs.class_id where se.taught_by='00000000-0000-0000-0000-0000000000e3')" "0"
 t "inactive volunteer record does not lock a lead login" 1 "update volunteers set status='Inactive' where id='00000000-0000-0000-0000-0000000000e3'; select active from profiles where email='leado@x.org'" "t"
 t "but volunteer powers stop" 3 "update training_feedback set overall=5 returning 1" ""
+# --- staff-created logins (migration 003) ---
+t "lead creates login for own volunteer" 2 "select public.create_login('new.vol','Passw0rd-1','New Vol','volunteer',null,'00000000-0000-0000-0000-0000000000e9') is not null" "t"
+t "new login is a volunteer with a stored name" 1 "select role||' '||email from profiles where volunteer_id='00000000-0000-0000-0000-0000000000e9'" "volunteer new.vol@portal.pratyagra.org"
+tsu "password is stored hashed" "select encrypted_password <> 'Passw0rd-1' and encrypted_password = extensions.crypt('Passw0rd-1', encrypted_password) from auth.users where email='new.vol@portal.pratyagra.org'" "t"
+t "duplicate login name refused" 1 "select public.create_login('New.Vol','Passw0rd-1','X','board')" "*already taken*"
+t "lead cannot create a login for another centre's volunteer" 2 "select public.create_login('x1','Passw0rd-1','X','volunteer',null,'00000000-0000-0000-0000-0000000000e3')" "*not allowed*"
+t "lead cannot create an admin" 2 "select public.create_login('x2','Passw0rd-1','X','admin')" "*not allowed*"
+t "lead cannot create a centre lead" 2 "select public.create_login('x3','Passw0rd-1','X','centre_lead','00000000-0000-0000-0000-0000000000b1')" "*not allowed*"
+t "volunteer cannot create logins" 4 "select public.create_login('x4','Passw0rd-1','X','volunteer',null,'00000000-0000-0000-0000-0000000000e1')" "*not allowed*"
+t "partner cannot create logins" 7 "select public.create_login('x5','Passw0rd-1','X','partner',null,null,'00000000-0000-0000-0000-0000000000d1')" "*not allowed*"
+t "pending user cannot create logins" 9 "select public.create_login('x6','Passw0rd-1','X','board')" "*not allowed*"
+t "board cannot create an admin" a "select public.create_login('x7','Passw0rd-1','X','admin')" "*not allowed*"
+t "board creates a centre lead" a "select public.create_login('lead.two','Passw0rd-1','Lead Two','centre_lead','00000000-0000-0000-0000-0000000000b2') is not null" "t"
+t "admin creates an admin" 1 "select public.create_login('second.admin','Passw0rd-1','Second Admin','admin') is not null" "t"
+t "short password refused" 1 "select public.create_login('xx8','short','X','board')" "*at least 8*"
+t "bad login name refused" 1 "select public.create_login('a b','Passw0rd-1','X','board')" "*Login name must*"
+t "centre lead needs a centre" 1 "select public.create_login('xx9','Passw0rd-1','X','centre_lead')" "*Choose the centre*"
+t "one login per volunteer" 1 "select public.create_login('x10','Passw0rd-1','X','volunteer',null,'00000000-0000-0000-0000-0000000000e9')" "*already has a login*"
+t "lead resets own volunteer's password" 2 "select public.reset_login_password((select id from profiles where volunteer_id='00000000-0000-0000-0000-0000000000e9'),'Fresh-pass-22') is null" "f"
+tsu "reset took effect" "select encrypted_password = extensions.crypt('Fresh-pass-22', encrypted_password) from auth.users where email='new.vol@portal.pratyagra.org'" "t"
+t "lead cannot reset an admin's password" 2 "select public.reset_login_password('00000000-0000-0000-0000-000000000001','Fresh-pass-22')" "*not allowed*"
+t "volunteer cannot reset anyone" 4 "select public.reset_login_password('00000000-0000-0000-0000-000000000005','Fresh-pass-22')" "*not allowed*"
+t "board cannot reset an admin" a "select public.reset_login_password('00000000-0000-0000-0000-000000000001','Fresh-pass-22')" "*not allowed*"
+t "first-admin helper is not callable by users" 1 "select app.create_first_admin('sneaky','Passw0rd-1','X')" "*permission denied*"
+t "internal insert is not callable by users" 4 "select app.insert_login('a@b.co','Passw0rd-1','X','admin',null,null,null)" "*permission denied*"
 # anon
 got=$($P -c "set role anon; select count(*) from students" 2>&1 | tr '\n' ' ')
 [[ "$got" == *"permission denied"* ]] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL anon: $got"; }

@@ -1,25 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import Crud from '../components/Crud'
-import { Field, Modal } from '../components/ui'
+import { Field } from '../components/ui'
+import { CreateLogin, ResetPassword } from '../components/Logins'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { friendly } from '../lib/util'
+import { loginName } from '../lib/util'
 import { GENDERS, STATUS, useOptions } from './common'
 
 export default function Volunteers() {
   const a = useAuth()
   const o = useOptions()
-  const [logins, setLogins] = useState<Record<string, string>>({})
+  const [logins, setLogins] = useState<Record<string, any>>({})
   const [give, setGive] = useState<any | null>(null)
+  const [reset, setReset] = useState<any | null>(null)
 
   const loadLogins = useCallback(async () => {
-    const [p, i] = await Promise.all([
-      supabase.from('profiles').select('volunteer_id, active').eq('role', 'volunteer'),
-      supabase.from('invites').select('volunteer_id').eq('role', 'volunteer'),
-    ])
-    const m: Record<string, string> = {}
-    for (const r of i.data ?? []) if (r.volunteer_id) m[r.volunteer_id] = 'Invited'
-    for (const r of p.data ?? []) if (r.volunteer_id) m[r.volunteer_id] = r.active ? 'Has login' : 'Login off'
+    const { data } = await supabase.from('profiles').select('id, email, full_name, role, volunteer_id, active').not('volunteer_id', 'is', null)
+    const m: Record<string, any> = {}
+    for (const r of data ?? []) m[r.volunteer_id] = r
     setLogins(m)
   }, [])
   useEffect(() => { loadLogins() }, [loadLogins])
@@ -45,7 +43,7 @@ export default function Volunteers() {
     { key: 'class_pref', label: 'Class preference', list: false },
     { key: 'location', label: 'Location', list: false },
     { key: 'notes', label: 'Notes', type: 'textarea', list: false },
-    { key: '_login', label: 'Login', form: false, list: r => logins[r.id] ?? 'No login' },
+    { key: '_login', label: 'Login name', form: false, list: r => logins[r.id] ? loginName(logins[r.id].email) + (logins[r.id].active ? '' : ' (off)') : <span className="muted">No login</span> },
   ]
   return (
     <>
@@ -53,40 +51,14 @@ export default function Volunteers() {
         canAdd canEdit={mine} canDelete={a.isAdmin}
         defaults={{ status: 'Active', centre_id: o.myCentre, verified: false }}
         onChanged={() => { a.reloadLookups(); loadLogins() }}
-        actions={r => mine(r) && !logins[r.id] && r.status === 'Active'
-          ? <button className="link" onClick={() => setGive(r)}>Give login</button> : null} />
-      {give && <GiveLogin vol={give} onClose={() => { setGive(null); loadLogins() }} />}
+        hint="Give login creates a login name and first password for you to pass on. Volunteers cannot sign themselves up."
+        actions={r => !mine(r) ? null : !logins[r.id]
+          ? (r.status === 'Active' ? <button className="link" onClick={() => setGive(r)}>Give login</button> : null)
+          : (logins[r.id].role === 'volunteer' || a.isStaff) && logins[r.id].id !== a.profile?.id && (a.isAdmin || logins[r.id].role !== 'admin')
+            ? <button className="link" onClick={() => setReset(logins[r.id])}>Reset password</button> : null} />
+      {give && <CreateLogin preset={{ role: 'volunteer', volunteer_id: give.id, full_name: give.full_name, login: (give.code ?? '').toLowerCase() }}
+        centres={o.allCentres} volunteers={o.allVolunteers} partners={o.partners} onClose={() => setGive(null)} onDone={loadLogins} />}
+      {reset && <ResetPassword profile={reset} onClose={() => setReset(null)} />}
     </>
-  )
-}
-
-function GiveLogin({ vol, onClose }: { vol: any; onClose: () => void }) {
-  const [email, setEmail] = useState(vol.email ?? '')
-  const [err, setErr] = useState('')
-  const [done, setDone] = useState(false)
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const { error } = await supabase.from('invites').insert({
-      email: email.trim().toLowerCase(), role: 'volunteer', volunteer_id: vol.id, full_name: vol.full_name,
-    })
-    if (error) setErr(friendly(error)); else setDone(true)
-  }
-  return (
-    <Modal title={`Give login: ${vol.full_name}`} onClose={onClose}>
-      {done ? (
-        <>
-          <p className="ok">{email.trim().toLowerCase()} is approved.</p>
-          <p>Ask {vol.full_name} to open the portal, choose <b>Create your login</b> and sign up with this exact email. They will see only the classes assigned to them.</p>
-          <div className="actions"><span className="grow" /><button className="primary" onClick={onClose}>Done</button></div>
-        </>
-      ) : (
-        <form onSubmit={save}>
-          <div className="field"><label htmlFor="gl">Volunteer's email</label>
-            <input id="gl" type="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
-          {err && <p className="error">{err}</p>}
-          <div className="actions"><span className="grow" /><button type="button" onClick={onClose}>Cancel</button><button className="primary">Approve email</button></div>
-        </form>
-      )}
-    </Modal>
   )
 }

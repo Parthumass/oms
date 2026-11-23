@@ -1,47 +1,38 @@
 import { useState } from 'react'
 import Crud from '../components/Crud'
-import { Field, Tabs } from '../components/ui'
+import { Field } from '../components/ui'
+import { CreateLogin, ResetPassword, ROLES } from '../components/Logins'
+import { useAuth } from '../lib/auth'
+import { loginName } from '../lib/util'
 import { useOptions } from './common'
 
-const ROLES = [
-  { value: 'admin', label: 'Admin' }, { value: 'board', label: 'Board' }, { value: 'centre_lead', label: 'Centre Lead' },
-  { value: 'volunteer', label: 'Volunteer' }, { value: 'partner', label: 'Partner' },
-]
-
 export default function Users() {
+  const a = useAuth()
   const o = useOptions()
-  const [tab, setTab] = useState('Logins')
   const [tick, setTick] = useState(0)
-  const scope: Field[] = [
+  const [creating, setCreating] = useState(false)
+  const [reset, setReset] = useState<any | null>(null)
+  const fields: Field[] = [
+    { key: 'email', label: 'Login name', form: false, list: r => loginName(r.email) },
+    { key: 'full_name', label: 'Name' },
     { key: 'role', label: 'Role', type: 'select', options: ROLES },
     { key: 'centre_id', label: 'Centre (centre lead)', type: 'select', options: o.allCentres },
-    { key: 'volunteer_id', label: 'Volunteer record', help: 'Needed for the Volunteer role. Also set it for an admin, board member or centre lead who teaches, so one login does both.', type: 'select', options: o.allVolunteers },
+    { key: 'volunteer_id', label: 'Volunteer record', type: 'select', options: o.allVolunteers,
+      help: 'Needed for the Volunteer role. Also set it for an admin, board member or centre lead who teaches, so one login does both.' },
     { key: 'partner_id', label: 'Partner (partner)', type: 'select', options: o.partners },
+    { key: 'active', label: 'Active', type: 'bool' },
   ]
+  const canReset = (r: any) => r.role && (a.isAdmin || r.role !== 'admin') && r.id !== a.profile?.id
   return (
     <>
       <h1>Logins</h1>
-      <Tabs tabs={['Logins', 'Approved emails']} value={tab} onChange={setTab} />
-      {tab === 'Logins' && (
-        <Crud key={tick} title="Logins" table="profiles" order={{ col: 'email' }} canEdit
-          hint="Everyone who has signed up. A login with no role is waiting and can see nothing. Each login has one main role; link a volunteer record as well if that person also teaches. Switch Active off to block someone."
-          fields={[
-            { key: 'email', label: 'Email', locked: true },
-            { key: 'full_name', label: 'Name' },
-            ...scope,
-            { key: 'active', label: 'Active', type: 'bool' },
-          ]} />
-      )}
-      {tab === 'Approved emails' && (
-        <Crud title="Approved emails" table="invites" pk="email" order={{ col: 'email' }} canAdd canEdit canDelete addLabel="Approve an email"
-          clean={v => ({ ...v, email: (v.email ?? '').trim().toLowerCase() })} onChanged={() => setTick(t => t + 1)}
-          hint="Approve an email with a role here. When that person creates their login with the same email, the role is applied and the line disappears from this list."
-          fields={[
-            { key: 'email', label: 'Email', type: 'email', required: true },
-            { key: 'full_name', label: 'Name' },
-            ...scope.map(f => (f.key === 'role' ? { ...f, required: true } : f)),
-          ]} />
-      )}
+      <Crud key={tick} title="Logins" table="profiles" order={{ col: 'email' }} canEdit={a.isAdmin} fields={fields}
+        hint={'Nobody can sign themselves up. Create a login here and hand the login name and first password to the person. '
+          + (a.isAdmin ? 'Switch Active off to block someone.' : 'Board members can create every kind of login except Admin.')}
+        toolbar={<button className="primary" onClick={() => setCreating(true)}>Create login</button>}
+        actions={r => canReset(r) ? <button className="link" onClick={() => setReset(r)}>Reset password</button> : null} />
+      {creating && <CreateLogin centres={o.allCentres} volunteers={o.volunteers} partners={o.partners} onClose={() => setCreating(false)} onDone={() => setTick(t => t + 1)} />}
+      {reset && <ResetPassword profile={reset} onClose={() => setReset(null)} />}
     </>
   )
 }

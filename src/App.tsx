@@ -1,8 +1,10 @@
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { configured, supabase } from './lib/supabase'
-import { LOGO } from './lib/util'
-import Login, { NewPassword } from './pages/Login'
+import { LOGO, loginName } from './lib/util'
+import { useState } from 'react'
+import Login from './pages/Login'
+import { ChangeMyPassword } from './components/Logins'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
 import Volunteers from './pages/Volunteers'
@@ -24,17 +26,17 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function App() {
   const a = useAuth()
+  const [changing, setChanging] = useState(false)
   if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
   if (a.loading) return <Center><p className="muted">Loading…</p></Center>
-  if (a.recovering) return <NewPassword />
   if (!a.session) return <Login />
   const role = a.profile?.active ? a.profile.role : null
   if (!role) {
     return (
       <Center>
         <h1>Waiting for access</h1>
-        <p>You are signed in as <b>{a.session.user.email}</b>, but this email has not been given a role yet.</p>
-        <p className="muted">Ask your centre lead or the Pratyagra admin team to add you, then sign in again.</p>
+        <p>You are signed in as <b>{loginName(a.session.user.email)}</b>, but this login has no role or has been switched off.</p>
+        <p className="muted">Ask your centre lead or the Pratyagra admin team.</p>
         <button onClick={() => supabase.auth.signOut()}>Sign out</button>
       </Center>
     )
@@ -55,7 +57,7 @@ export default function App() {
     ['/checklist', 'Monthly checklist', a.canManage],
     ['/reports', 'Reports', !a.isVolunteer],
     ['/setup', 'Setup', a.isAdmin],
-    ['/users', 'Logins', a.isAdmin],
+    ['/users', 'Logins', a.isStaff],
   ]
   const centre = a.lookups.centres.find(c => c.id === a.profile?.centre_id)
   const partner = a.lookups.partners.find(x => x.id === a.profile?.partner_id)
@@ -70,11 +72,13 @@ export default function App() {
           ))}
         </nav>
         <div className="who">
-          <b>{a.profile?.full_name || a.profile?.email}</b>
+          <b>{a.profile?.full_name || loginName(a.profile?.email)}</b>
           <span>{ROLE_LABEL[role]}{a.alsoVolunteer ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
+          <button className="link" onClick={() => setChanging(true)}>Change password</button>
           <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </aside>
+      {changing && <ChangeMyPassword onClose={() => setChanging(false)} />}
       <main className="main">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -91,7 +95,7 @@ export default function App() {
           {a.canManage && <Route path="/checklist" element={<Checklist />} />}
           {!a.isVolunteer && <Route path="/reports" element={<Reports />} />}
           {a.isAdmin && <Route path="/setup" element={<Setup />} />}
-          {a.isAdmin && <Route path="/users" element={<Users />} />}
+          {a.isStaff && <Route path="/users" element={<Users />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

@@ -40,3 +40,17 @@ export function friendly(err: any): string {
   if (/violates check constraint/i.test(m)) return 'One of the values is not allowed. Please check the form.'
   return m
 }
+
+// ----- logins -----
+// People sign in with a login name. Behind the scenes it is stored as an
+// address at this domain, which receives no mail.
+export const LOGIN_DOMAIN = '@portal.pratyagra.org'
+export const toEmail = (login: string) => { const v = login.trim().toLowerCase(); return v.includes('@') ? v : v + LOGIN_DOMAIN }
+export const loginName = (email?: string | null) => (email ?? '').endsWith(LOGIN_DOMAIN) ? (email as string).slice(0, -LOGIN_DOMAIN.length) : email ?? ''
+/** A first password that is easy to read out: three groups of four, no look-alike characters. */
+export function genPassword() {
+  const abc = 'abcdefghjkmnpqrstuvwxyz23456789'
+  const r = new Uint32Array(12); crypto.getRandomValues(r)
+  const c = Array.from(r, n => abc[n % abc.length])
+  return `${c.slice(0, 4).join('')}-${c.slice(4, 8).join('')}-${c.slice(8).join('')}`
+}

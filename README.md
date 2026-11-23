@@ -25,12 +25,19 @@ centres on one login is not supported.
 
 ## How people get a login
 
-1. An admin approves an email under **Logins > Approved emails** (any role), or a centre lead clicks
-   **Give login** next to a volunteer.
-2. That person opens the portal, chooses **Create your login**, and signs up with the same email.
-3. They confirm their email from the link Supabase sends, then sign in. The role is applied automatically.
+Nobody signs themselves up, and no email is involved.
 
-Marking a volunteer **Inactive** switches their login off.
+1. An admin or board member opens **Logins > Create login**, or a centre lead clicks **Give login** next to one of
+   their volunteers.
+2. They choose a login name (for example `asha.rao`) and a first password. The portal suggests one.
+3. They pass the login name and password to the person, who signs in and can change the password with
+   **Change password** at the bottom of the menu.
+
+Who can create what: admins create any login; board members any login except Admin; centre leads only volunteer
+logins for volunteers of their own centre. The same people can **Reset password** for the logins they may create.
+There is no "forgot password" email: a forgotten password is reset by one of them.
+
+Marking a volunteer **Inactive** switches their login off. An admin can switch any login off under Logins.
 
 ## Attendance
 
@@ -52,18 +59,17 @@ A substitute can mark only the date they were named on.
 
 1. **Database.** In a new Supabase project, open SQL Editor, paste `supabase/schema.sql`, and run it.
    Then run each file in `supabase/migrations/` in order.
-2. **Keep "Confirm email" switched on** (Authentication > Sign In / Providers > Email). The approval system relies on it:
-   with it off, anyone who knows an approved email could claim that login.
-3. **Set up your own email sender** (Authentication > Emails > SMTP Settings). Supabase's built-in sender only
-   delivers to members of your Supabase team and allows 2 emails an hour, so volunteers would never get their
-   confirmation link. Any SMTP account works, for example a pratyagra.org mailbox or a free Resend or Brevo account.
-4. **Site URL** (Authentication > URL Configuration): set it to the address where the portal is hosted, and add the
-   same address under Redirect URLs.
-5. **First admin.** In SQL Editor run, with your own email:
+2. **Switch off self sign-up** (Authentication > Sign In / Providers > "Allow new users to sign up"). The portal
+   has no sign-up page, and this stops anyone creating a stray account through Supabase directly. A stray account
+   would have no role and see nothing, but it is tidier to block it.
+3. **Site URL** (Authentication > URL Configuration): set it to the address where the portal is hosted.
+4. **First admin.** In SQL Editor run this once, with your own login name, password and name:
    ```sql
-   insert into public.invites (email, role) values ('you@pratyagra.org', 'admin');
+   select app.create_first_admin('your.name', 'a-password-you-choose', 'Your Full Name');
    ```
-   Then create your login in the portal with that email.
+   Sign in to the portal with that login name and password. Create every other login from the portal.
+5. Login names are stored as `name@portal.pratyagra.org`, an address that receives no mail. To use a different
+   domain, change it in `supabase/migrations/003_logins_created_by_staff.sql` and `src/lib/util.ts`.
 6. In the portal, open **Setup** and add centres, programs, partners and the names of the five core trainings.
 
 ## Hosting
@@ -96,6 +102,7 @@ npm run dev
 
 - `supabase/schema.sql` : tables, access rules, report views
 - `supabase/migrations/` : later database changes, run in order after `schema.sql`
+- `src/components/Logins.tsx` : create login, reset password, change own password
 - `supabase/tests/` : checks that each role sees only what it should
 - `src/pages/` : one file per screen
 - `src/components/Crud.tsx` : the shared list-and-form used by most screens
