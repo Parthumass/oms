@@ -100,13 +100,15 @@ function syncMeetingInvites_(secret) {
 function eventBody_(m) {
   const lines = [];
   if (m.description) lines.push(m.description, '');
-  if (m.mode) lines.push('Mode: ' + m.mode);
+  if (m.room) lines.push('Room: ' + m.room);
+  else if (m.mode) lines.push('Mode: ' + m.mode);
   if (m.link) lines.push('Join: ' + m.link);
+  if (m.passcode) lines.push('Passcode: ' + m.passcode);
   lines.push('', 'Details in the Pratyagra portal: ' + m.portal_url);
   const body = {
     summary: m.title,
     description: lines.join('\n'),
-    location: m.link || (m.mode === 'Offline' ? 'In person' : ''),
+    location: m.link ? (m.room ? m.room + ' (Zoom): ' : '') + m.link : (m.mode === 'Offline' ? 'In person' : ''),
     attendees: m.guests.map(function (e) { return { email: e }; }),
     guestsCanSeeOtherGuests: false,              // volunteers do not see each other's email addresses
     guestsCanInviteOthers: false,

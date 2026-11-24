@@ -22,6 +22,7 @@ function ManageTraining() {
   const [invite, setInvite] = useState<any | null>(null)
   const [record, setRecord] = useState<any | null>(null)
   const [cal, setCal] = useState<any | null>(null)
+  const rooms = useRooms()
   const [tick, setTick] = useState(0)
   useEffect(() => { supabase.from('training_topics').select('*').eq('active', true).order('sort').then(({ data }) => setTopics(data ?? [])) }, [tick])
   const vols = a.lookups.volunteers.filter(v => v.status === 'Active' && (a.isStaff || v.centre_id === a.profile?.centre_id))
@@ -56,7 +57,9 @@ function ManageTraining() {
       list: r => o.allCentres.find(c => c.value === r.centre_id)?.label ?? 'All centres' },
     { key: 'mode', label: 'Mode', type: 'select', options: MODES, list: false },
     { key: 'duration_min', label: 'Minutes', type: 'number', list: false },
-    { key: 'meeting_link', label: 'Video call link', list: false, help: 'Google Meet, Zoom or similar. Goes into the calendar invite.' },
+    { key: 'room_id', label: 'Room', type: 'select', options: rooms.map(r => ({ value: r.id, label: r.name })),
+      help: 'One of the fixed Zoom rooms. Its link and passcode go into the calendar invite.', list: r => rooms.find(x => x.id === r.room_id)?.name ?? '' },
+    { key: 'meeting_link', label: 'Other video call link', list: false, help: 'Only if this meeting is not in one of the rooms above.' },
     { key: 'description', label: 'Description', type: 'textarea', list: false },
     { key: '_c', label: 'Calendar', form: false, list: r => !r.cal_wanted ? '' : r.cal_error ? <span className="pill warn" title={r.cal_error}>Problem</span>
         : r.cal_dirty ? <span className="pill info" title="Goes out with the next hourly run, while emails are switched on">Waiting to send</span>
@@ -333,6 +336,21 @@ function FeedbackList() {
 
 const RATE: [string, string][] = [['relevance', 'Relevance of the topic'], ['content', 'Quality of the content'], ['space', 'Space to ask questions'], ['pace', 'Pace of the session'], ['overall', 'Overall satisfaction']]
 
+/** The fixed meeting rooms (Zoom). */
+export function useRooms() {
+  const [rooms, setRooms] = useState<any[]>([])
+  useEffect(() => { supabase.from('meeting_rooms').select('*').eq('active', true).order('sort').then(({ data }) => setRooms(data ?? [])) }, [])
+  return rooms
+}
+
+/** Where to join a meeting: its room, or its own link. */
+function JoinLink({ s, rooms }: { s: any; rooms: any[] }) {
+  const room = rooms.find(r => r.id === s.room_id)
+  const link = room?.link ?? s.meeting_link
+  if (!link || !/^https?:\/\//i.test(link)) return null
+  return <><a href={link} target="_blank" rel="noreferrer noopener">Join{room ? ` ${room.name}` : ''}</a>{room?.passcode && <small className="muted"> passcode {room.passcode}</small>}</>
+}
+
 export function MyTraining() {
   const a = useAuth()
   const me = a.profile!.volunteer_id!
@@ -342,6 +360,7 @@ export function MyTraining() {
   const [given, setGiven] = useState<Set<string>>(new Set())
   const [invited, setInvited] = useState<Set<string>>(new Set())
   const [fb, setFb] = useState<any | null>(null)
+  const rooms = useRooms()
   const load = useCallback(async () => {
     const [s, t, at, f, inv] = await Promise.all([
       supabase.from('training_sessions').select('*').order('session_date', { ascending: false }),
@@ -386,7 +405,7 @@ export function MyTraining() {
             {sessions.length === 0 && <tr><td colSpan={5} className="muted">No meetings or sessions yet.</td></tr>}
             {sessions.map(s => (
               <tr key={s.id}>
-                <td>{fmtDate(s.session_date)}{s.start_time ? <small className="muted"> {String(s.start_time).slice(0, 5)} IST</small> : ''}</td><td>{s.title}{invited.has(s.id) && <> <span className="pill info">Invited</span></>}</td><td>{s.kind}</td>
+                <td>{fmtDate(s.session_date)}{s.start_time ? <small className="muted"> {String(s.start_time).slice(0, 5)} IST</small> : ''}</td><td>{s.title}{invited.has(s.id) && <> <span className="pill info">Invited</span></>}<div><JoinLink s={s} rooms={rooms} /></div></td><td>{s.kind}</td>
                 <td>{attended.has(s.id) ? <span className="yes">✓ Yes</span> : <span className="muted">Not marked</span>}</td>
                 <td className="row-actions">{attended.has(s.id) && (given.has(s.id) ? <span className="muted">Feedback sent</span> : <button className="link" onClick={() => setFb(s)}>Give feedback</button>)}</td>
               </tr>

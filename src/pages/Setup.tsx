@@ -14,7 +14,7 @@ export default function Setup() {
   return (
     <>
       <h1>Setup</h1>
-      <Tabs tabs={['Centres', 'Programs', 'Partners', 'Email']} value={tab} onChange={setTab} />
+      <Tabs tabs={['Centres', 'Programs', 'Partners', 'Rooms', 'Email']} value={tab} onChange={setTab} />
       {tab === 'Centres' && (
         <Crud title="Centres" table="centres" order={{ col: 'name' }} canAdd canEdit canDelete onChanged={a.reloadLookups}
           defaults={{ active: true }} clean={v => ({ ...v, code: (v.code ?? '').toUpperCase() })}
@@ -30,6 +30,17 @@ export default function Setup() {
         <Crud title="Programs" table="programs" order={{ col: 'name' }} canAdd canEdit canDelete onChanged={a.reloadLookups}
           defaults={{ active: true }}
           fields={[{ key: 'name', label: 'Name', required: true }, { key: 'active', label: 'Active', type: 'bool' }]} />
+      )}
+      {tab === 'Rooms' && (
+        <Crud title="Meeting rooms" table="meeting_rooms" order={{ col: 'sort' }} canAdd canEdit canDelete defaults={{ active: true, sort: 10 }}
+          hint="The fixed Zoom rooms used for meetings and trainings. Picking a room on a meeting puts its link and passcode in the calendar invite. Changing a room here updates the invites for upcoming meetings in it."
+          fields={[
+            { key: 'name', label: 'Room', required: true },
+            { key: 'link', label: 'Zoom link', required: true },
+            { key: 'passcode', label: 'Passcode' },
+            { key: 'sort', label: 'Order', type: 'number', required: true, list: false },
+            { key: 'active', label: 'Active', type: 'bool' },
+          ]} />
       )}
       {tab === 'Partners' && (
         <Crud title="Partners" table="partners" order={{ col: 'name' }} canAdd canEdit canDelete onChanged={a.reloadLookups}

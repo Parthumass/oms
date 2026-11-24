@@ -189,6 +189,16 @@ tsu "switched off: empty" "select jsonb_array_length(cal_run((select secret from
 tsu "deleting the meeting cancels the event" "update mail_settings set calendar_invites=true; delete from training_sessions where id='00000000-0000-0000-0000-000000000e51'; select cal_run((select secret from app.mail_secret)) -> 'cancel'" "*evt123*"
 tsu "cancellation reported done" "select cal_done((select secret from app.mail_secret), null, 0, 'evt123'); select jsonb_array_length(cal_run((select secret from app.mail_secret)) -> 'cancel')" "*0"
 tsu "tidy calendar tests" "update mail_settings set enabled=false; delete from email_outbox; update profiles set contact_email=null where contact_email like '%@mail.test'; update volunteers set email='v1@x.org' where id='00000000-0000-0000-0000-0000000000e1'; select 1" "1"
+# meeting rooms
+t "volunteer sees the rooms" 4 "select count(*) from meeting_rooms" "5"
+t "partner does not" 8 "select count(*) from meeting_rooms" "0"
+t "board cannot edit rooms (admin only)" a "update meeting_rooms set passcode='x' returning 1" ""
+t "admin sets the passcode" 1 "update meeting_rooms set passcode='9999' where name='Classroom 2' returning passcode" "9999"
+tsu "meeting in Classroom 2 with invites on" "update mail_settings set enabled=true; insert into training_sessions(id,title,session_date,start_time,kind,room_id,cal_wanted) values ('00000000-0000-0000-0000-000000000e52','Room test','2099-01-05','10:00','Meeting',(select id from meeting_rooms where name='Classroom 2'),true) returning 1; update training_sessions set cal_dirty=true where id='00000000-0000-0000-0000-000000000e52'; select 1" "*1"
+tsu "invite carries room, link and passcode" "select (x->>'room') || '|' || (x->>'link') || '|' || (x->>'passcode') from jsonb_array_elements(cal_run((select secret from app.mail_secret)) -> 'meetings') x where x->>'id' = '00000000-0000-0000-0000-000000000e52'" "Classroom 2|https://tinyurl.com/pefclassroom-2|9999"
+tsu "clear it" "select cal_done((select secret from app.mail_secret), '00000000-0000-0000-0000-000000000e52', (select cal_version from training_sessions where id='00000000-0000-0000-0000-000000000e52'), 'evtR'); select cal_dirty from training_sessions where id='00000000-0000-0000-0000-000000000e52'" "*f"
+t "changing the room's passcode updates upcoming invites" 1 "update meeting_rooms set passcode='4321' where name='Classroom 2'; select cal_dirty from training_sessions where id='00000000-0000-0000-0000-000000000e52'" "*t"
+tsu "tidy rooms tests" "delete from training_sessions where id='00000000-0000-0000-0000-000000000e52'; delete from app.cal_cancellations; update meeting_rooms set passcode=null; update mail_settings set enabled=false; select 1" "1"
 # lead invites
 t "leadB adds own volunteer" 2 "insert into volunteers(id,full_name,centre_id) values ('00000000-0000-0000-0000-0000000000e9','New Vol','00000000-0000-0000-0000-0000000000b1') returning 1" "1"
 t "leadB cannot invite ODS volunteer" 2 "insert into invites(email,role,volunteer_id) values ('z@x.org','volunteer','00000000-0000-0000-0000-0000000000e3')" "*row-level security*"
