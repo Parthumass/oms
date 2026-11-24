@@ -242,3 +242,6 @@ table.scores input[aria-invalid="true"] { border-color: var(--bad); background: 
 }
 .dot.leave, .cal-item.leave { --c: #9a2d6b; --b: #fbe6f2; }
 .chips.col { flex-direction: column; align-items: stretch; } .chips.col .chip { text-align: left; white-space: normal; height: auto; border-radius: 8px; }
+.pw-field { position: relative; display: flex; } .pw-field input { flex: 1; padding-right: 64px; }
+.pw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--purple); font-weight: 600; font-size: 13px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.pw-toggle:hover { background: var(--purple-l); }

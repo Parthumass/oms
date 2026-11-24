@@ -7,6 +7,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [show, setShow] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +29,10 @@ export default function Login() {
           <label htmlFor="email">Login name</label>
           <input id="email" autoComplete="username" autoCapitalize="none" spellCheck={false} value={login} onChange={e => setLogin(e.target.value)} required />
           <label htmlFor="password">Password</label>
-          <input id="password" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <div className="pw-field">
+            <input id="password" type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
+            <button type="button" className="pw-toggle" aria-pressed={show} aria-controls="password" onClick={() => setShow(s => !s)}>{show ? 'Hide' : 'Show'}</button>
+          </div>
           {err && <p className="error">{err}</p>}
           <button className="primary block" disabled={busy}>{busy ? 'Please wait…' : 'Sign in'}</button>
           <p className="muted auth-help">No login yet, or forgot your password? Ask your centre lead or the Pratyagra admin team. Logins are given out by them.</p>
