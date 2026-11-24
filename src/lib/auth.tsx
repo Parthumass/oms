@@ -15,6 +15,8 @@ type Ctx = {
   canManage: boolean
   /** An admin, board member or centre lead whose login is also linked to a volunteer record. */
   alsoVolunteer: boolean
+  /** Set while a board member or admin is looking at the portal as someone else. Everything is read-only then. */
+  viewAs: { realName: string; expiresAt: string } | null
 }
 const empty: Lookups = { centres: [], programs: [], volunteers: [], partners: [] }
 const AuthCtx = createContext<Ctx>(null as any)
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [recovering, setRecovering] = useState(false)
   const [lookups, setLookups] = useState<Lookups>(empty)
+  const [viewAs, setViewAs] = useState<Ctx['viewAs']>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); if (!data.session) setLoading(false) })
@@ -53,8 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     ;(async () => {
       setLoading(true)
-      const { data } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle()
+      // "view as": the database then answers as the chosen person, so load that person's profile
+      const st = (await supabase.rpc('view_as_status')).data as any
+      const who = st?.target ?? uid
+      const { data } = await supabase.from('profiles').select('*').eq('id', who).maybeSingle()
       if (cancelled) return
+      setViewAs(st?.target ? { realName: st.real_name, expiresAt: st.expires_at } : null)
       setProfile(data as Profile | null)
       if (data?.role && data.active) await reloadLookups()
       if (!cancelled) setLoading(false)
@@ -73,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isPartner: role === 'partner',
     canManage: role === 'admin' || role === 'board' || role === 'centre_lead',
     alsoVolunteer: !!role && role !== 'volunteer' && !!profile?.volunteer_id,
+    viewAs,
   }
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
 }

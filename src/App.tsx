@@ -6,6 +6,7 @@ import { useState } from 'react'
 import Login from './pages/Login'
 import { ChangeMyPassword } from './components/Logins'
 import { MyMailPrefs } from './components/Mail'
+import { ViewAsBanner, ViewAsPicker, stopViewAs } from './components/ViewAs'
 import Dashboard from './pages/Dashboard'
 import Students from './pages/Students'
 import Volunteers from './pages/Volunteers'
@@ -37,6 +38,7 @@ export default function App() {
   const a = useAuth()
   const [changing, setChanging] = useState(false)
   const [mailPrefs, setMailPrefs] = useState(false)
+  const [viewing, setViewing] = useState(false)
   const updates = useUnreadUpdates(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   const toNote = useTimeOffToNote(!!a.profile?.role && a.profile.active && a.canManage, a.profile?.id)
   const openTasks = useMyOpenTasks(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
@@ -50,6 +52,7 @@ export default function App() {
         <h1>Waiting for access</h1>
         <p>You are signed in as <b>{loginName(a.session.user.email)}</b>, but this login has no role or has been switched off.</p>
         <p className="muted">Ask your centre lead or the Pratyagra admin team.</p>
+        {a.viewAs && <button className="primary" onClick={stopViewAs}>Back to my view</button>}
         <button onClick={() => supabase.auth.signOut()}>Sign out</button>
       </Center>
     )
@@ -81,7 +84,8 @@ export default function App() {
   const partner = a.lookups.partners.find(x => x.id === a.profile?.partner_id)
 
   return (
-    <div className="shell">
+    <div className={'shell' + (a.viewAs ? ' viewing' : '')}>
+      <ViewAsBanner />
       <aside className="side">
         <div className="brand"><img src={LOGO} alt="" /><span>Pratyagra<small>Operations Portal</small></span></div>
         <nav>
@@ -92,13 +96,16 @@ export default function App() {
         <div className="who">
           <b>{a.profile?.full_name || loginName(a.profile?.email)}</b>
           <span>{a.profile?.code ? a.profile.code + ' · ' : ''}{a.profile?.title || ROLE_LABEL[role]}{a.alsoVolunteer && !a.profile?.title ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
-          {!a.isPartner && <button className="link" onClick={() => setMailPrefs(true)}>Email reminders</button>}
-          <button className="link" onClick={() => setChanging(true)}>Change password</button>
+          {a.isStaff && !a.viewAs && <button className="link" onClick={() => setViewing(true)}>View as…</button>}
+          {a.viewAs && <button className="link" onClick={stopViewAs}>Back to my view</button>}
+          {!a.isPartner && !a.viewAs && <button className="link" onClick={() => setMailPrefs(true)}>Email reminders</button>}
+          {!a.viewAs && <button className="link" onClick={() => setChanging(true)}>Change password</button>}
           <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </div>
       </aside>
       {changing && <ChangeMyPassword onClose={() => setChanging(false)} />}
       {mailPrefs && <MyMailPrefs onClose={() => setMailPrefs(false)} />}
+      {viewing && <ViewAsPicker onClose={() => setViewing(false)} />}
       <main className="main">
         <Routes>
           <Route path="/" element={<Dashboard />} />

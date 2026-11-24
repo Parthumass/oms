@@ -35,6 +35,7 @@ export function downloadCsv(name: string, header: string[], rows: (string | numb
 
 export function friendly(err: any): string {
   const m: string = err?.message ?? String(err)
+  if (/read-only transaction/i.test(m)) return 'You are viewing the portal as someone else, so nothing can be changed. Go back to your own view first.'
   if (/row-level security/i.test(m)) return 'You do not have permission to do that.'
   if (/duplicate key/i.test(m)) return 'That already exists.'
   if (/violates foreign key/i.test(m)) return 'This is still in use elsewhere, so it cannot be removed.'
