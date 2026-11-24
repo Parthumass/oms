@@ -14,10 +14,12 @@ export default function Training() {
 function ManageTraining() {
   const a = useAuth()
   const o = useOptions()
-  const [tab, setTab] = useState('Trainings')
+  const [tab, setTab] = useState('Meetings and sessions')
   const [topics, setTopics] = useState<any[]>([])
   const [mark, setMark] = useState<any | null>(null)
   const [assign, setAssign] = useState<any | null>(null)
+  const [invite, setInvite] = useState<any | null>(null)
+  const [record, setRecord] = useState<any | null>(null)
   const [tick, setTick] = useState(0)
   useEffect(() => { supabase.from('training_topics').select('*').eq('active', true).order('sort').then(({ data }) => setTopics(data ?? [])) }, [tick])
   const vols = a.lookups.volunteers.filter(v => v.status === 'Active' && (a.isStaff || v.centre_id === a.profile?.centre_id))
@@ -25,7 +27,9 @@ function ManageTraining() {
   const fields: Field[] = [
     { key: 'session_date', label: 'Date', type: 'date', required: true },
     { key: 'title', label: 'Title', required: true },
-    { key: 'kind', label: 'Kind', type: 'select', options: ['Core', 'Monthly', 'Other'], required: true },
+    { key: 'kind', label: 'Kind', type: 'select', options: ['Meeting', 'Core', 'Monthly', 'Other'], required: true,
+      help: 'Meeting for a meeting; Core or Monthly for a training session.' },
+    { key: 'start_time', label: 'Start time (India time)', type: 'time' },
     { key: 'topic_id', label: 'Training', type: 'select', options: topics.map(t => ({ value: t.id, label: t.name + (t.is_core ? ' (core)' : '') })),
       help: 'If this session delivers one of the trainings, pick it. Everyone marked present is then recorded as having completed it.' },
     { key: 'centre_id', label: 'Centre', type: 'select', options: a.isLead ? o.centres : o.allCentres, required: a.isLead, locked: a.isLead,
@@ -34,12 +38,12 @@ function ManageTraining() {
     { key: 'mode', label: 'Mode', type: 'select', options: MODES, list: false },
     { key: 'duration_min', label: 'Minutes', type: 'number', list: false },
     { key: 'description', label: 'Description', type: 'textarea', list: false },
-    { key: '_n', label: 'Attended', form: false, list: r => r.training_attendance?.[0]?.count ?? 0 },
+    { key: '_n', label: 'Attended', form: false, list: r => { const at = r.training_attendance?.[0]?.count ?? 0, inv = r.training_invites?.[0]?.count ?? 0; return inv ? `${at} (${inv} invited)` : at } },
   ]
   return (
     <>
-      <h1>Volunteer training</h1>
-      <Tabs tabs={['Trainings', 'Tracker', 'Sessions', 'Feedback']} value={tab} onChange={setTab} />
+      <h1>Trainings / Meetings</h1>
+      <Tabs tabs={['Meetings and sessions', 'Trainings', 'Tracker', 'Feedback']} value={tab} onChange={setTab} />
       {tab === 'Trainings' && (
         <Crud key={'t' + tick} title="Trainings" table="training_topics" select="*, training_assignments(count)" order={{ col: 'sort' }}
           canAdd={a.isStaff} canEdit={a.isStaff} canDelete={a.isStaff} defaults={{ is_core: false, active: true, sort: 10 }}
@@ -58,13 +62,13 @@ function ManageTraining() {
           actions={r => <button className="link" onClick={() => setAssign(r)}>Assign</button>} />
       )}
       {tab === 'Tracker' && <Tracker topics={topics} vols={vols} />}
-      {tab === 'Sessions' && (
-        <Crud key={'s' + tick} title="Training sessions" table="training_sessions" select="*, training_attendance(count)" fields={fields}
+      {tab === 'Meetings and sessions' && (
+        <Crud key={'s' + tick} title="Meetings and sessions" table="training_sessions" select="*, training_attendance(count), training_invites(count)" addLabel="Add meeting or session" fields={fields}
           order={{ col: 'session_date', asc: false }} canAdd canDelete
           canEdit={r => a.isStaff || r.centre_id === a.profile?.centre_id}
-          defaults={{ kind: 'Monthly', centre_id: o.myCentre, mode: 'Online' }}
-          hint="Live sessions, including the monthly centre meetings. Mark who attended after each one."
-          actions={r => <button className="link" onClick={() => setMark(r)}>Mark attendance</button>} />
+          defaults={{ kind: 'Meeting', centre_id: o.myCentre, mode: 'Online' }}
+          hint="Add a meeting or training session, use Invite to choose who should come, then Mark attendance afterwards. Record shows who was invited and who was there."
+          actions={r => <><button className="link" onClick={() => setInvite(r)}>Invite</button><button className="link" onClick={() => setMark(r)}>Mark attendance</button><button className="link" onClick={() => setRecord(r)}>Record</button></>} />
       )}
       {tab === 'Feedback' && <FeedbackList />}
       {assign && (
@@ -72,12 +76,70 @@ function ManageTraining() {
           canEdit options={volOpts} note="Tick the volunteers who have to do this training. Unticking removes it from their list."
           onClose={() => { setAssign(null); setTick(t => t + 1) }} />
       )}
-      {mark && (
-        <LinkPicker title={`Who attended: ${mark.title}`} table="training_attendance" parentKey="session_id" parentId={mark.id} childKey="volunteer_id"
-          canEdit options={volOpts}
-          onClose={() => { setMark(null); setTick(t => t + 1) }} />
+      {invite && (
+        <LinkPicker title={`Invite to: ${invite.title}`} table="training_invites" parentKey="session_id" parentId={invite.id} childKey="volunteer_id"
+          canEdit options={volOpts} note="Tick everyone who should come. They see it under their trainings and meetings."
+          onClose={() => { setInvite(null); setTick(t => t + 1) }} />
       )}
+      {mark && <MarkAttendance session={mark} volOpts={volOpts} onClose={() => { setMark(null); setTick(t => t + 1) }} />}
+      {record && <SessionRecord session={record} onClose={() => setRecord(null)} />}
     </>
+  )
+}
+
+/** Attendance picker with the invited people marked, so they are easy to find. */
+function MarkAttendance({ session, volOpts, onClose }: { session: any; volOpts: { value: string; label: string; sub?: string }[]; onClose: () => void }) {
+  const [invited, setInvited] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    supabase.from('training_invites').select('volunteer_id').eq('session_id', session.id)
+      .then(({ data }) => setInvited(new Set((data ?? []).map((r: any) => r.volunteer_id))))
+  }, [session.id])
+  if (!invited) return null
+  const options = volOpts.map(o => ({ ...o, sub: invited.has(o.value) ? `invited · ${o.sub ?? ''}` : o.sub }))
+    .sort((x, y) => Number(invited.has(y.value)) - Number(invited.has(x.value)))
+  return (
+    <LinkPicker title={`Who attended: ${session.title}`} table="training_attendance" parentKey="session_id" parentId={session.id} childKey="volunteer_id"
+      canEdit options={options} note={invited.size ? 'Tick everyone who was there. Search "invited" to see only the people who were invited.' : 'Tick everyone who was there.'}
+      onClose={onClose} />
+  )
+}
+
+/** The record of one meeting or session: who was invited, who was there. */
+function SessionRecord({ session, onClose }: { session: any; onClose: () => void }) {
+  const [rows, setRows] = useState<any[] | null>(null)
+  useEffect(() => {
+    Promise.all([
+      supabase.from('training_invites').select('volunteer_id, volunteers(full_name, code)').eq('session_id', session.id),
+      supabase.from('training_attendance').select('volunteer_id, marked_at, volunteers(full_name, code)').eq('session_id', session.id),
+    ]).then(([i, t]) => {
+      const m = new Map<string, any>()
+      for (const r of (i.data ?? []) as any[]) m.set(r.volunteer_id, { name: r.volunteers?.full_name, code: r.volunteers?.code, invited: true, present: false })
+      for (const r of (t.data ?? []) as any[]) m.set(r.volunteer_id, { ...(m.get(r.volunteer_id) ?? { name: r.volunteers?.full_name, code: r.volunteers?.code, invited: false }), present: true })
+      setRows([...m.values()].sort((x, y) => String(x.name).localeCompare(String(y.name))))
+    })
+  }, [session.id])
+  const list = rows ?? []
+  const status = (r: any) => (r.present ? 'Present' : 'Absent')
+  return (
+    <Modal title={`Record: ${session.title}`} onClose={onClose} wide>
+      <p className="task-meta"><span>{fmtDate(session.session_date)}</span><span>{session.kind}</span>
+        <span><b>{list.filter(r => r.present).length}</b> present</span><span><b>{list.filter(r => r.invited).length}</b> invited</span>
+        <span><b>{list.filter(r => r.invited && !r.present).length}</b> absent</span></p>
+      <div className="table-wrap"><table>
+        <thead><tr><th>Name</th><th>ID</th><th>Invited</th><th>Attendance</th></tr></thead>
+        <tbody>
+          {rows && list.length === 0 && <tr><td colSpan={4} className="muted">Nobody has been invited or marked yet.</td></tr>}
+          {list.map(r => (
+            <tr key={r.code}><td><b>{r.name}</b></td><td>{r.code}</td><td>{r.invited ? 'Yes' : 'No'}</td>
+              <td>{r.present ? <span className="yes">✓ Present</span> : <span className="pill warn">Absent</span>}</td></tr>
+          ))}
+        </tbody>
+      </table></div>
+      <div className="actions"><span className="grow" />
+        <button onClick={() => downloadCsv(`record-${session.session_date}-${session.title}`, ['Date', 'Meeting or session', 'Kind', 'Name', 'ID', 'Invited', 'Attendance'],
+          list.map(r => [session.session_date, session.title, session.kind, r.name, r.code, r.invited ? 'Yes' : 'No', status(r)]))}>Export</button>
+        <button onClick={onClose}>Close</button></div>
+    </Modal>
   )
 }
 
@@ -154,23 +216,26 @@ export function MyTraining() {
   const [todo, setTodo] = useState<any[]>([])
   const [attended, setAttended] = useState<Set<string>>(new Set())
   const [given, setGiven] = useState<Set<string>>(new Set())
+  const [invited, setInvited] = useState<Set<string>>(new Set())
   const [fb, setFb] = useState<any | null>(null)
   const load = useCallback(async () => {
-    const [s, t, at, f] = await Promise.all([
+    const [s, t, at, f, inv] = await Promise.all([
       supabase.from('training_sessions').select('*').order('session_date', { ascending: false }),
       supabase.from('training_assignments').select('*, training_topics(name, description, link, is_core, sort)').eq('volunteer_id', me),
       supabase.from('training_attendance').select('session_id').eq('volunteer_id', me),
       supabase.from('training_feedback').select('session_id').eq('volunteer_id', me),
+      supabase.from('training_invites').select('session_id').eq('volunteer_id', me),
     ])
     setSessions(s.data ?? [])
     setTodo((t.data ?? []).sort((x: any, y: any) => Number(!!x.completed_on) - Number(!!y.completed_on) || (x.training_topics?.sort ?? 0) - (y.training_topics?.sort ?? 0)))
     setAttended(new Set((at.data ?? []).map((r: any) => r.session_id)))
     setGiven(new Set((f.data ?? []).map((r: any) => r.session_id)))
+    setInvited(new Set((inv.data ?? []).map((r: any) => r.session_id)))
   }, [me])
   useEffect(() => { load() }, [load])
   return (
     <>
-      <h1>My training</h1>
+      <h1>My trainings / meetings</h1>
       <section className="card">
         <div className="card-head"><h2>Trainings assigned to me: {todo.filter(t => t.completed_on).length} of {todo.length} done</h2></div>
         <div className="table-wrap"><table>
@@ -189,15 +254,15 @@ export function MyTraining() {
         </table></div>
       </section>
       <section className="card">
-        <div className="card-head"><h2>Sessions</h2></div>
-        <p className="muted hint">Your centre lead marks who attended and ticks off finished trainings. Once you are marked at a session, you can leave feedback.</p>
+        <div className="card-head"><h2>Meetings and sessions</h2></div>
+        <p className="muted hint">Meetings and training sessions. <b>Invited</b> means you are expected to come. Your centre lead marks who attended; once you are marked, you can leave feedback.</p>
         <div className="table-wrap"><table>
-          <thead><tr><th>Date</th><th>Session</th><th>Kind</th><th>Attended</th><th /></tr></thead>
+          <thead><tr><th>Date</th><th>Meeting or session</th><th>Kind</th><th>Attended</th><th /></tr></thead>
           <tbody>
-            {sessions.length === 0 && <tr><td colSpan={5} className="muted">No training sessions yet.</td></tr>}
+            {sessions.length === 0 && <tr><td colSpan={5} className="muted">No meetings or sessions yet.</td></tr>}
             {sessions.map(s => (
               <tr key={s.id}>
-                <td>{fmtDate(s.session_date)}</td><td>{s.title}</td><td>{s.kind}</td>
+                <td>{fmtDate(s.session_date)}{s.start_time ? <small className="muted"> {String(s.start_time).slice(0, 5)} IST</small> : ''}</td><td>{s.title}{invited.has(s.id) && <> <span className="pill info">Invited</span></>}</td><td>{s.kind}</td>
                 <td>{attended.has(s.id) ? <span className="yes">✓ Yes</span> : <span className="muted">Not marked</span>}</td>
                 <td className="row-actions">{attended.has(s.id) && (given.has(s.id) ? <span className="muted">Feedback sent</span> : <button className="link" onClick={() => setFb(s)}>Give feedback</button>)}</td>
               </tr>

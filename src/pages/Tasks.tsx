@@ -89,32 +89,62 @@ function TaskForm({ task, people, onClose, onSaved }: { task?: any; people: any[
   const a = useAuth()
   const [v, setV] = useState<any>(task ? { ...task } : { category: 'Social media', assignee: '', title: '', details: '', due_date: '' })
   const [err, setErr] = useState('')
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [q, setQ] = useState('')
   const set = (k: string, x: any) => setV((s: any) => ({ ...s, [k]: x }))
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setErr('')
-    const p = people.find(x => x.id === v.assignee)
-    const body: any = { title: v.title.trim(), details: v.details || null, category: v.category, assignee: v.assignee, due_date: v.due_date || null,
-      assignee_name: p ? who(p) : v.assignee_name }
-    const res = task ? await supabase.from('tasks').update(body).eq('id', task.id)
-      : await supabase.from('tasks').insert({ ...body, assigned_by: a.profile!.id, assigned_by_name: a.profile!.full_name || loginName(a.profile!.email) })
+    const base: any = { title: v.title.trim(), details: v.details || null, category: v.category, due_date: v.due_date || null }
+    if (task) {
+      const p = people.find(x => x.id === v.assignee)
+      const res = await supabase.from('tasks').update({ ...base, assignee: v.assignee, assignee_name: p ? who(p) : v.assignee_name }).eq('id', task.id)
+      if (res.error) setErr(friendly(res.error)); else onSaved()
+      return
+    }
+    // a new task for several people: each person gets their own copy, with its own status and uploads
+    const chosen = people.filter(x => picked.has(x.id))
+    if (!chosen.length) return setErr('Choose at least one person to give it to.')
+    const by = { assigned_by: a.profile!.id, assigned_by_name: a.profile!.full_name || loginName(a.profile!.email) }
+    const res = await supabase.from('tasks').insert(chosen.map(p => ({ ...base, ...by, assignee: p.id, assignee_name: who(p) })))
     if (res.error) setErr(friendly(res.error)); else onSaved()
   }
+  const toggle = (id: string) => setPicked(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const term = q.trim().toLowerCase()
+  const listed = term ? people.filter(p => (who(p) + ' ' + (p.role ?? '')).toLowerCase().includes(term)) : people
   const options = task && !people.some(p => p.id === task.assignee) ? [{ id: task.assignee, full_name: task.assignee_name, email: '' }, ...people] : people
   return (
     <Modal title={task ? 'Edit task' : 'New task'} onClose={onClose} wide>
       <form onSubmit={save}>
         <div className="form-grid">
           <div className="field span"><label htmlFor="tk_title">What needs doing</label><input id="tk_title" required value={v.title} onChange={e => set('title', e.target.value)} /></div>
-          <div className="field"><label htmlFor="tk_who">Give it to</label>
-            <select id="tk_who" required value={v.assignee} onChange={e => set('assignee', e.target.value)}>
-              <option value="">Select…</option>{options.map(p => <option key={p.id} value={p.id}>{who(p)}</option>)}</select>
-            <small>{a.isStaff ? 'Anyone who has a login.' : 'Volunteers of your centre who have a login.'}</small></div>
+          {task ? (
+            <div className="field"><label htmlFor="tk_who">Give it to</label>
+              <select id="tk_who" required value={v.assignee} onChange={e => set('assignee', e.target.value)}>
+                <option value="">Select…</option>{options.map(p => <option key={p.id} value={p.id}>{who(p)}</option>)}</select></div>
+          ) : (
+            <div className="field span"><label htmlFor="tk_search">Give it to <span className="muted">({picked.size} selected)</span></label>
+              <div className="row">
+                <input id="tk_search" placeholder="Search by name, ID or role" value={q} onChange={e => setQ(e.target.value)} />
+                <button type="button" onClick={() => setPicked(s => new Set([...s, ...listed.map(p => p.id)]))}>Select all shown</button>
+                <button type="button" onClick={() => setPicked(new Set())}>Clear</button>
+              </div>
+              <div className="ticklist short" role="group" aria-label="Give it to">
+                {listed.length === 0 ? <p className="muted">{people.length ? 'No one matches.' : 'No one with a login to give it to yet.'}</p> :
+                  listed.map(p => (
+                    <label key={p.id} className="tick">
+                      <input type="checkbox" checked={picked.has(p.id)} onChange={() => toggle(p.id)} />
+                      <span>{who(p)}</span><small>{String(p.role).replace('_', ' ')}</small>
+                    </label>
+                  ))}
+              </div>
+              <small>{a.isStaff ? 'Anyone who has a login.' : 'Volunteers of your centre who have a login.'} Pick more than one and each person gets their own copy to hand in.</small></div>
+          )}
           <div className="field"><label htmlFor="tk_cat">Type</label><select id="tk_cat" value={v.category} onChange={e => set('category', e.target.value)}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
           <div className="field"><label htmlFor="tk_due">Due date</label><input id="tk_due" type="date" value={v.due_date ?? ''} onChange={e => set('due_date', e.target.value)} /></div>
           <div className="field span"><label htmlFor="tk_details">Details</label><textarea id="tk_details" rows={4} value={v.details ?? ''} onChange={e => set('details', e.target.value)} /></div>
         </div>
         {err && <p className="error">{err}</p>}
-        <div className="actions"><span className="grow" /><button type="button" onClick={onClose}>Cancel</button><button className="primary">{task ? 'Save' : 'Give task'}</button></div>
+        <div className="actions"><span className="grow" /><button type="button" onClick={onClose}>Cancel</button><button className="primary">{task ? 'Save' : picked.size > 1 ? `Give task to ${picked.size} people` : 'Give task'}</button></div>
       </form>
     </Modal>
   )

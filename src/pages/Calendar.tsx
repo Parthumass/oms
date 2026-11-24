@@ -7,8 +7,8 @@ import { Modal } from '../components/ui'
 import { useOptions } from './common'
 
 type Item = { date: string; time?: string; end?: string; kind: 'class' | 'task' | 'training' | 'event'; title: string; sub?: string; link?: string; linkLabel?: string; centre?: string | null; mine: boolean; done?: boolean }
-const KIND: Record<Item['kind'], string> = { class: 'Class', task: 'Task due', training: 'Training', event: 'Event' }
-const KINDS: Record<Item['kind'], string> = { class: 'Classes', task: 'Tasks due', training: 'Trainings', event: 'Events' }
+const KIND: Record<Item['kind'], string> = { class: 'Class', task: 'Task due', training: 'Training / meeting', event: 'Event' }
+const KINDS: Record<Item['kind'], string> = { class: 'Classes', task: 'Tasks due', training: 'Trainings / meetings', event: 'Events' }
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 const startOfWeek = (d: Date) => addDays(d, -d.getDay())
 
@@ -70,8 +70,8 @@ export default function Calendar() {
     }
     for (const t of data.tasks) out.push({ date: t.due_date, kind: 'task', title: t.title, done: t.status === 'Done', centre: loginCentre[t.assignee] ?? null,
       mine: t.assignee === me || t.assigned_by === me, sub: `${t.category} · for ${t.assignee_name} · ${t.status}`, link: '/tasks', linkLabel: 'Open tasks' })
-    for (const t of data.trainings) out.push({ date: t.session_date, kind: 'training', title: t.title, centre: t.centre_id, mine: true,
-      sub: [centreName(t.centre_id) ?? 'All centres', t.kind, t.mode].filter(Boolean).join(' · '), link: '/training', linkLabel: 'Open training' })
+    for (const t of data.trainings) { const lt = t.start_time ? localTime(t.session_date, t.start_time) : { date: t.session_date, time: undefined }; out.push({ date: lt.date, time: lt.time, kind: 'training', title: t.title, centre: t.centre_id, mine: true,
+      sub: [centreName(t.centre_id) ?? 'All centres', t.kind, t.mode, istLabel(t.start_time)].filter(Boolean).join(' · '), link: '/training', linkLabel: 'Open' }) }
     for (const e of data.events) out.push({ date: e.event_date, kind: 'event', title: e.name, centre: e.centre_id, mine: true,
       sub: centreName(e.centre_id), link: '/events', linkLabel: 'Open events' })
     return out

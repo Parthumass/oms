@@ -248,4 +248,14 @@ t "handing in a task queues an email to the giver" 1 "update tasks set status='S
 # anon
 got=$($P -c "set role anon; select count(*) from students" 2>&1 | tr '\n' ' ')
 [[ "$got" == *"permission denied"* ]] && pass=$((pass+1)) || { fail=$((fail+1)); echo "FAIL anon: $got"; }
+# meetings: invites
+t "leadB adds a meeting" 2 "insert into training_sessions(id,title,session_date,centre_id,kind,start_time) values ('00000000-0000-0000-0000-000000000f82','Team meeting','2026-11-20','00000000-0000-0000-0000-0000000000b1','Meeting','18:00') returning 1" "1"
+t "leadB invites vol1" 2 "insert into training_invites(session_id,volunteer_id) values ('00000000-0000-0000-0000-000000000f82','00000000-0000-0000-0000-0000000000e1') returning 1" "1"
+t "vol1 sees own invite" 4 "select count(*) from training_invites" "1"
+t "vol2 sees no invites" 5 "select count(*) from training_invites" "0"
+t "vol cannot invite self" 5 "insert into training_invites(session_id,volunteer_id) values ('00000000-0000-0000-0000-000000000f82','00000000-0000-0000-0000-0000000000e2')" "*row-level security*"
+t "leadO cannot invite to BPL meeting" 3 "insert into training_invites(session_id,volunteer_id) values ('00000000-0000-0000-0000-000000000f82','00000000-0000-0000-0000-0000000000e2')" "*row-level security*"
+t "partner sees no invites" 8 "select count(*) from training_invites" "0"
+t "admin sees invites" 1 "select count(*) from training_invites" "1"
+t "bad kind refused" 1 "insert into training_sessions(title,session_date,kind) values ('x','2026-11-20','Party')" "*check constraint*"
 echo "passed=$pass failed=$fail"

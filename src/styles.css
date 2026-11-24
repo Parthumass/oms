@@ -209,3 +209,5 @@ button.danger-link { color: var(--bad); }
 .cal-col-head { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; } .cal-col-head small { color: var(--muted); text-transform: uppercase; font-size: 11px; }
 .cal-empty { font-size: 12px; text-align: center; margin: 8px 0; }
 @media (max-width: 860px) { .cal-cols { grid-template-columns: 1fr; } .cal-col { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); } .cal-cell { min-height: 70px; } .cal-item { font-size: 11px; padding: 1px 3px; } .cal-heading { min-width: 0; } }
+
+.ticklist.short { max-height: 190px; } .ticklist > p { padding: 8px 12px; margin: 0; }
