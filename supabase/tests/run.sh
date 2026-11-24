@@ -516,6 +516,7 @@ t "board without a volunteer record is not asked" a "select my_agreement_status(
 t "partner is not asked and cannot read it" 7 "select (my_agreement_status()->>'needed')||'|'||(select count(*) from volunteer_agreements)" "false|0"
 t "a name is needed to sign" 4 "select sign_agreement(1, ' ')" "*type your full name*"
 t "volunteer signs" 4 "select sign_agreement(1, 'Vol One'); select my_agreement_status()->>'needed'" "*false"
+tsu "signed copy emailed to the volunteer" "select to_email||'|'||(body like '%Signed by: Vol One%')||'|'||(body like '%Never share contact details%') from email_outbox where kind='agreement'" "*|true|true"
 t "the volunteer cannot write signatures directly" 4 "insert into agreement_signatures(profile_id,version,signed_name) values ('00000000-0000-0000-0000-000000000004',1,'x')" "*permission denied*"
 t "the centre lead sees the signature" 2 "select signed_name||'|'||version from agreement_signatures" "Vol One|1"
 t "other centre's lead does not" 3 "select count(*) from agreement_signatures" "0"

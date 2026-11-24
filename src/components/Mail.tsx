@@ -12,6 +12,7 @@ const TYPES: [string, string][] = [
   ['training_emails', 'Trainings assigned and not done yet'],
   ['cover_emails', 'Class hand-overs: asked, accepted, approved or declined'],
   ['time_off_emails', 'Time off: noted to the person, sent to supervisors, and the reply'],
+  ['agreement_emails', 'Volunteer agreement: each volunteer gets a copy of what they signed'],
   ['calendar_invites', 'Calendar invites for meetings (sent from the email script\'s Google account)'],
   ['checklist_reminders', 'Monthly checklist reminder to centre leads'],
 ]
