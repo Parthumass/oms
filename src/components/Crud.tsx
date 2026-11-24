@@ -22,6 +22,8 @@ type Props = {
   pk?: string
   onChanged?: () => void
   clean?: (values: any) => any
+  /** Turn a saved row into form values (the opposite of clean). */
+  prepare?: (row: any) => any
 }
 
 export default function Crud(p: Props) {
@@ -104,7 +106,7 @@ export default function Crud(p: Props) {
                     {(p.actions || p.canEdit) && (
                       <td className="row-actions">
                         {p.actions?.(r, load)}
-                        {editable(r) && <button className="link" onClick={() => { setFormErr(''); setEditing({ ...r }) }}>Edit</button>}
+                        {editable(r) && <button className="link" onClick={() => { setFormErr(''); setEditing(p.prepare ? p.prepare({ ...r }) : { ...r }) }}>Edit</button>}
                         {editable(r) && p.canDelete && <button className="link danger-link" onClick={() => remove(r)}>Delete</button>}
                       </td>
                     )}

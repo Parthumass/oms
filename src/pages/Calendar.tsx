@@ -6,9 +6,9 @@ import { fmtDate, iso, monthLabel, today, WEEKDAYS } from '../lib/util'
 import { Modal } from '../components/ui'
 import { useOptions } from './common'
 
-type Item = { date: string; time?: string; end?: string; kind: 'class' | 'task' | 'training' | 'event' | 'leave'; title: string; sub?: string; link?: string; linkLabel?: string; centre?: string | null; mine: boolean; done?: boolean }
-const KIND: Record<Item['kind'], string> = { class: 'Class', task: 'Task due', training: 'Training / meeting', event: 'Event', leave: 'Time off' }
-const KINDS: Record<Item['kind'], string> = { class: 'Classes', task: 'Tasks due', training: 'Trainings / meetings', event: 'Events', leave: 'Time off' }
+type Item = { date: string; time?: string; end?: string; kind: 'class' | 'task' | 'training' | 'booking' | 'event' | 'leave'; title: string; sub?: string; link?: string; linkLabel?: string; centre?: string | null; mine: boolean; done?: boolean }
+const KIND: Record<Item['kind'], string> = { class: 'Class', task: 'Task due', training: 'Training / meeting', booking: 'Room booking / extra class', event: 'Event', leave: 'Time off' }
+const KINDS: Record<Item['kind'], string> = { class: 'Classes', task: 'Tasks due', training: 'Trainings / meetings', booking: 'Room bookings', event: 'Events', leave: 'Time off' }
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 const startOfWeek = (d: Date) => addDays(d, -d.getDay())
 
@@ -29,7 +29,7 @@ export default function Calendar() {
   const [scope, setScope] = useState<string>(a.isStaff ? 'all' : a.isLead ? 'centre' : 'mine')
   const [data, setData] = useState<any>(null)
   const [open, setOpen] = useState<Item | null>(null)
-  const [kinds, setKinds] = useState<Set<string>>(new Set(['class', 'task', 'training', 'event']))
+  const [kinds, setKinds] = useState<Set<string>>(new Set(['class', 'task', 'training', 'booking', 'event']))
   const [away, setAway] = useState('all')   // time off: 'all', 'none' or one person's login id
 
   useEffect(() => {
@@ -42,7 +42,9 @@ export default function Calendar() {
       supabase.from('class_teachers').select('class_id, volunteer_id').limit(5000),
       supabase.from('class_covers').select('class_id, cover_date, volunteer_id, volunteer_name').limit(5000),
       supabase.from('time_off').select('id, profile_id, person_name, person_code, centre_id, kind, start_date, end_date, noted_at').limit(5000),
-    ]).then(([c, t, tr, ev, p, ct, cv, off]) => setData({ timeOff: off.data ?? [], classes: c.data ?? [], tasks: t.data ?? [], trainings: tr.data ?? [], events: ev.data ?? [], profiles: p.data ?? [], teachers: ct.data ?? [], covers: cv.data ?? [] }))
+      supabase.from('schedule_requests').select('id, kind, title, class_id, centre_id, start_date, start_time, duration_min, room_id, own_room, requested_by, requester_name').eq('status', 'Approved').neq('kind', 'new_class').limit(5000),
+      supabase.from('meeting_rooms').select('id, name').limit(100),
+    ]).then(([c, t, tr, ev, p, ct, cv, off, bk, rm]) => setData({ bookings: bk.data ?? [], rooms: rm.data ?? [], timeOff: off.data ?? [], classes: c.data ?? [], tasks: t.data ?? [], trainings: tr.data ?? [], events: ev.data ?? [], profiles: p.data ?? [], teachers: ct.data ?? [], covers: cv.data ?? [] }))
   }, [a.canManage])
 
   // the dates on screen
@@ -71,7 +73,7 @@ export default function Calendar() {
         const cover = data.covers.find((k: any) => k.class_id === c.id && k.cover_date === ds)
         const teach = !!myVol && (c.volunteer_id === myVol || data.teachers.some((t: any) => t.class_id === c.id && t.volunteer_id === myVol))
         out.push({ date: lt.date, time: lt.time, kind: 'class', title: c.name, centre: c.centre_id, mine: cover ? cover.volunteer_id === myVol : teach,
-          sub: [centreName(c.centre_id), cover ? `taken by ${cover.volunteer_name ?? 'another teacher'} (handed over)` : volName(c.volunteer_id), c.start_time ? istLabel(c.start_time) + ` · ${c.duration_min} min` : 'Time not set'].filter(Boolean).join(' · '),
+          sub: [centreName(c.centre_id), c.own_room ? 'Own classroom' : data.rooms.find((x: any) => x.id === c.room_id)?.name, cover ? `taken by ${cover.volunteer_name ?? 'another teacher'} (handed over)` : volName(c.volunteer_id), c.start_time ? istLabel(c.start_time) + ` · ${c.duration_min} min` : 'Time not set'].filter(Boolean).join(' · '),
           link: `/attendance?class=${c.id}`, linkLabel: 'Open attendance' })
       }
     }
@@ -79,6 +81,13 @@ export default function Calendar() {
       mine: t.assignee === me || t.assigned_by === me, sub: `${t.category} · for ${t.assignee_name} · ${t.status}`, link: '/tasks', linkLabel: 'Open tasks' })
     for (const t of data.trainings) { const lt = t.start_time ? localTime(t.session_date, t.start_time) : { date: t.session_date, time: undefined }; out.push({ date: lt.date, time: lt.time, kind: 'training', title: t.title, centre: t.centre_id, mine: true,
       sub: [centreName(t.centre_id) ?? 'All centres', t.kind, t.mode, istLabel(t.start_time)].filter(Boolean).join(' · '), link: '/training', linkLabel: 'Open' }) }
+    for (const b of data.bookings) {
+      const lt = localTime(b.start_date, b.start_time)
+      const room = b.own_room ? 'Own classroom' : data.rooms.find((x: any) => x.id === b.room_id)?.name
+      out.push({ date: lt.date, time: lt.time, kind: 'booking', title: b.title, centre: b.centre_id, mine: b.requested_by === me,
+        sub: [b.kind === 'extra_class' ? 'Extra class' : 'Room booking', room, istLabel(b.start_time) + ` · ${b.duration_min} min`, `booked by ${b.requester_name}`].filter(Boolean).join(' · '),
+        link: b.kind === 'extra_class' ? `/attendance?class=${b.class_id}` : undefined, linkLabel: 'Open attendance' })
+    }
     for (const e of data.events) out.push({ date: e.event_date, kind: 'event', title: e.name, centre: e.centre_id, mine: true,
       sub: centreName(e.centre_id), link: '/events', linkLabel: 'Open events' })
     for (const r of data.timeOff) {

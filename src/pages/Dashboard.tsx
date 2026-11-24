@@ -9,6 +9,8 @@ import { ALL_EXAMS } from './Assessments'
 import { AskTimeChange, TimeRequests } from '../components/TimeRequests'
 import { CoverList, CoverModal } from '../components/Cover'
 import { istLabel, localTime } from './Calendar'
+import { RequestKind, RequestModal, RoomSchedule, ScheduleRequests, placeLabel } from '../components/Schedule'
+import { useRooms } from './Training'
 
 export default function Dashboard() {
   const a = useAuth()
@@ -17,6 +19,10 @@ export default function Dashboard() {
   const [ask, setAsk] = useState<any | null>(null)
   const [cover, setCover] = useState<any | null>(null)
   const [coverTick, setCoverTick] = useState(0)
+  const [asking, setAsking] = useState<{ kind: RequestKind; cls?: any } | null>(null)
+  const [showRooms, setShowRooms] = useState(false)
+  const [reqTick, setReqTick] = useState(0)
+  const rooms = useRooms()
   const [mine, setMine] = useState<Set<string> | null>(null)
   useEffect(() => {
     if (!a.profile?.volunteer_id) return
@@ -56,7 +62,14 @@ export default function Dashboard() {
           <Stat label="Teaching hours" value={((d.hours?.teaching_min ?? 0) / 60).toFixed(1)} />
           <Stat label="Trainings done" value={`${d.hours?.trainings_done ?? 0} of ${d.hours?.trainings_assigned ?? 0}`} />
         </div>
-        {d.classes.length === 0 && <p className="card pad muted">No class has been assigned to you yet. Your centre lead will add you to one.</p>}
+        <div className="row wrap page-actions">
+          <button onClick={() => setAsking({ kind: 'new_class' })}>Propose a new class</button>
+          <button onClick={() => setAsking({ kind: 'room' })}>Book a room</button>
+          <button className={showRooms ? 'on' : ''} aria-pressed={showRooms} onClick={() => setShowRooms(s => !s)}>{showRooms ? 'Hide room schedule' : 'Room schedule'}</button>
+        </div>
+        {showRooms && <RoomSchedule key={reqTick} />}
+        <ScheduleRequests tick={reqTick} onChanged={() => setReqTick(t => t + 1)} />
+        {d.classes.length === 0 && <p className="card pad muted">No class has been assigned to you yet. Your centre lead will add you to one, or propose one above.</p>}
         <div className="cards">
           {calc.byClass.map(({ c, pct: p }: any) => (
             <div key={c.id} className="card pad class-card">
@@ -64,8 +77,9 @@ export default function Dashboard() {
               <p className="muted">{o.programs.find(x => x.value === c.program_id)?.label} · {o.allCentres.find(x => x.value === c.centre_id)?.label}</p>
               <p>{c.class_students?.[0]?.count ?? 0} students{c.weekdays?.length ? ' · ' + c.weekdays.map((w: number) => WEEKDAYS[w]).join(', ') : ''}</p>
               <p>{c.start_time ? <>Starts <b>{istLabel(c.start_time)}</b> <span className="muted">({localTime('2026-01-05', c.start_time).time} your time)</span></> : <span className="muted">Start time not set yet</span>}</p>
+              {(c.room_id || c.own_room) && <p>Where: <b>{placeLabel(c, rooms)}</b>{(() => { const link = rooms.find(r => r.id === c.room_id)?.link ?? c.meeting_link; return link && /^https?:\/\//i.test(link) ? <> · <a href={link} target="_blank" rel="noreferrer noopener">Join</a></> : null })()}</p>}
               <p>Attendance so far: <b>{pct(p)}</b></p>
-              <div className="row"><Link className="btn primary" to={`/attendance?class=${c.id}`}>Mark attendance</Link><Link className="btn" to={`/assessments?class=${c.id}`}>Assessments</Link>{(c.volunteer_id === a.profile?.volunteer_id || mine?.has(c.id)) && <><button onClick={() => setAsk(c)}>Ask to change time</button><button onClick={() => setCover(c)}>Can't make a class</button></>}</div>
+              <div className="row"><Link className="btn primary" to={`/attendance?class=${c.id}`}>Mark attendance</Link><Link className="btn" to={`/assessments?class=${c.id}`}>Assessments</Link>{(c.volunteer_id === a.profile?.volunteer_id || mine?.has(c.id)) && <><button onClick={() => setAsk(c)}>Ask to change time</button><button onClick={() => setAsking({ kind: 'extra_class', cls: c })}>Add an extra class</button><button onClick={() => setCover(c)}>Can't make a class</button></>}</div>
             </div>
           ))}
         </div>
@@ -73,6 +87,8 @@ export default function Dashboard() {
         <TimeRequests key={ask ? 'a' : 'b'} classes={d.classes} />
         {cover && <CoverModal cls={cover} onClose={() => setCover(null)} onSaved={() => setCoverTick(t => t + 1)} />}
         {ask && <AskTimeChange cls={ask} onClose={() => setAsk(null)} />}
+        {asking && <RequestModal kind={asking.kind} cls={asking.cls} classes={d.classes.filter((c: any) => c.active && (c.volunteer_id === a.profile?.volunteer_id || mine?.has(c.id)))}
+          onClose={() => setAsking(null)} onSaved={() => setReqTick(t => t + 1)} />}
       </>
     )
   }

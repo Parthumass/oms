@@ -194,6 +194,7 @@ button.danger-link { color: var(--bad); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: baseline; }
 .dot.class, .cal-item.class { --c: #5a367e; --b: #f1e8fa; } .dot.task, .cal-item.task { --c: #b85f08; --b: #fff1e0; }
 .dot.training, .cal-item.training { --c: #1d4f91; --b: #e4eefb; } .dot.event, .cal-item.event { --c: #1f7a45; --b: #e3f4ea; }
+.dot.booking, .cal-item.booking { --c: #0e6e73; --b: #def3f3; }
 .dot { background: var(--c); }
 .cal-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); }
 .cal-dow { padding: 6px 8px; font-size: 12px; text-transform: uppercase; color: var(--muted); background: #fcfbfd; border-bottom: 1px solid var(--line); }
@@ -254,3 +255,20 @@ button.tick.pick { width: 100%; background: #fff; border: 0; border-bottom: 1px 
 button.tick.pick:hover { background: var(--purple-l); } button.tick.pick:last-child { border-bottom: 0; }
 @media (max-width: 860px) { .shell.viewing .side { top: 0; height: auto; } }
 .class-card .row { flex-wrap: wrap; }
+
+/* room schedule and requests */
+.page-actions { margin: 0 0 12px; gap: 8px; }
+.page-actions button.on { background: var(--purple-l); }
+.room-sched.compact { border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+.room-sched.compact .card-head { padding: 0 0 6px; }
+table.rooms-grid { table-layout: fixed; min-width: 760px; }
+table.rooms-grid th, table.rooms-grid td { vertical-align: top; padding: 6px; font-size: 13px; }
+table.rooms-grid thead th.today { color: var(--purple, #6d2d91); }
+table.rooms-grid thead th:first-child, table.rooms-grid tbody th { width: 150px; }
+table.rooms-grid tbody th { text-align: left; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink); white-space: normal; }
+.rooms-grid .free { color: var(--muted); font-size: 12px; }
+.rooms-grid .booking { display: flex; flex-direction: column; gap: 1px; background: #def3f3; border-left: 3px solid #0e6e73; border-radius: 6px; padding: 4px 6px; margin-bottom: 4px; }
+.rooms-grid .booking.waiting { background: #fff; border: 1px dashed #0e6e73; border-left-width: 3px; }
+.rooms-grid .booking small { color: var(--muted); }
+small.block { display: block; }
+input.mini { width: 140px; padding: 4px 6px; font-size: 13px; }
