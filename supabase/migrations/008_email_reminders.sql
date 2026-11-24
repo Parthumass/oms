@@ -183,7 +183,7 @@ begin
     raise exception 'Not allowed.';
   end if;
   select * into s from public.mail_settings;
-  update public.mail_settings set last_run = now();
+  update public.mail_settings ms set last_run = now() where ms.id;
   if not s.enabled then return; end if;
 
   if extract(hour from ist) >= s.send_hour_ist and s.last_digest_date is distinct from today then
@@ -195,7 +195,7 @@ begin
       values (r.id, r.addr, 'Pratyagra: your day, ' || to_char(today, 'DD Mon'), txt, 'digest', today)
       on conflict do nothing;
     end loop;
-    update public.mail_settings set last_digest_date = today;
+    update public.mail_settings ms set last_digest_date = today where ms.id;
   end if;
 
   select s.daily_cap - count(*) into room from public.email_outbox o
