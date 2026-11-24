@@ -60,11 +60,11 @@ export default function App() {
 
   const nav: [string, string, boolean][] = [
     ['/', a.isVolunteer ? 'My classes' : 'Dashboard', true],
+    ['/announcements', updates.unread ? `Announcements (${updates.unread})` : 'Announcements', !a.isPartner],
     ['/calendar', 'Calendar', !a.isPartner],
     ['/students', 'Students', a.canManage],
     ['/volunteers', 'Volunteers', a.canManage],
     ['/classes', 'Classes', a.canManage],
-    ['/updates', updates.unread ? `Updates (${updates.unread})` : 'Updates', !a.isPartner],
     ['/tasks', openTasks ? `Tasks (${openTasks})` : 'Tasks', !a.isPartner],
     ['/time-off', toNote ? `Time off (${toNote})` : 'Time off', !a.isPartner],
     ['/attendance', 'Attendance', true],
@@ -112,7 +112,8 @@ export default function App() {
           {a.canManage && <Route path="/students" element={<Students />} />}
           {a.canManage && <Route path="/volunteers" element={<Volunteers />} />}
           {a.canManage && <Route path="/classes" element={<Classes />} />}
-          {!a.isPartner && <Route path="/updates" element={<Updates onSeen={updates.refresh} />} />}
+          {!a.isPartner && <Route path="/announcements" element={<Updates onSeen={updates.refresh} />} />}
+          <Route path="/updates" element={<Navigate to="/announcements" replace />} />
           {!a.isPartner && <Route path="/calendar" element={<Calendar />} />}
           {!a.isPartner && <Route path="/tasks" element={<Tasks />} />}
           {!a.isPartner && <Route path="/time-off" element={<TimeOff />} />}

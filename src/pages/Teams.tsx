@@ -23,7 +23,7 @@ export default function Teams() {
       <h1>Teams</h1>
       <Crud key={tick} title="Teams" table="teams" select="*, team_members(count)" order={{ col: 'name' }}
         canAdd={a.isStaff} canEdit={a.isStaff} canDelete={a.isStaff} defaults={{ active: true }} addLabel="Add team"
-        hint="A team is a named group of people, for example the English curriculum team. Use Members to choose who is in it. Team members can give each other tasks, and you can invite a whole team to a meeting or post an update to it."
+        hint="A team is a named group of people, for example the English curriculum team. Use Members to choose who is in it. Team members can give each other tasks, and you can invite a whole team to a meeting or post an announcement to it."
         fields={[
           { key: 'name', label: 'Team name', required: true },
           { key: 'description', label: 'What the team does', type: 'textarea' },

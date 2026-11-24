@@ -48,7 +48,7 @@ export default function Updates({ onSeen }: { onSeen?: () => void }) {
     return (r.roles as string[]).map(x => ROLE_NAMES[x]).join(', ') + (centre ? ` · ${centre}` : '')
   }
   const remove = async (r: any) => {
-    if (!window.confirm('Delete this update for everyone? This cannot be undone.')) return
+    if (!window.confirm('Delete this announcement for everyone? This cannot be undone.')) return
     const { error } = await supabase.from('announcements').delete().eq('id', r.id)
     if (error) setErr(friendly(error)); else load()
   }
@@ -56,9 +56,9 @@ export default function Updates({ onSeen }: { onSeen?: () => void }) {
 
   return (
     <>
-      <div className="title-row"><h1>Updates</h1>{a.canManage && <button className="primary" onClick={() => setPosting({})}>New update</button>}</div>
+      <div className="title-row"><h1>Announcements</h1>{a.canManage && <button className="primary" onClick={() => setPosting({})}>New announcement</button>}</div>
       {err && <p className="error">{err}</p>}
-      {rows.length === 0 && <p className="card pad muted">No updates yet.{a.canManage ? ' Post one to reach everyone, a group, a team, or selected people.' : ''}</p>}
+      {rows.length === 0 && <p className="card pad muted">No announcements yet.{a.canManage ? ' Post one to reach everyone, a group, a team, or selected people.' : ''}</p>}
       <div className="feed">
         {rows.map(r => (
           <article key={r.id} className={'card pad post' + (fresh.has(r.id) ? ' new' : '')}>
@@ -143,7 +143,7 @@ function PostForm({ post, onClose, onSaved }: { post: any; onClose: () => void; 
   }
 
   return (
-    <Modal title={isNew ? 'New update' : 'Edit update'} onClose={onClose} wide>
+    <Modal title={isNew ? 'New announcement' : 'Edit announcement'} onClose={onClose} wide>
       <form onSubmit={save}>
         <div className="field"><label htmlFor="up_title">Title</label><input id="up_title" required value={v.title} onChange={e => set('title', e.target.value)} /></div>
         <div className="field top-gap"><label htmlFor="up_body">Message</label><textarea id="up_body" rows={5} required value={v.body} onChange={e => set('body', e.target.value)} /></div>
@@ -184,13 +184,13 @@ function PostForm({ post, onClose, onSaved }: { post: any; onClose: () => void; 
         )}
         <label className="check top-gap"><input type="checkbox" checked={!!v.pinned} onChange={e => set('pinned', e.target.checked)} /> Keep at the top (pinned)</label>
         {err && <p className="error">{err}</p>}
-        <div className="actions"><span className="grow" /><button type="button" onClick={onClose}>Cancel</button><button className="primary" disabled={busy}>{busy ? 'Posting…' : isNew ? 'Post update' : 'Save'}</button></div>
+        <div className="actions"><span className="grow" /><button type="button" onClick={onClose}>Cancel</button><button className="primary" disabled={busy}>{busy ? 'Posting…' : isNew ? 'Post announcement' : 'Save'}</button></div>
       </form>
     </Modal>
   )
 }
 
-/** Number of updates the signed-in person has not opened yet, for the menu badge. */
+/** Number of announcements the signed-in person has not opened yet, for the menu badge. */
 export function useUnreadUpdates(enabled: boolean, userId?: string) {
   const [n, setN] = useState(0)
   const [tick, setTick] = useState(0)

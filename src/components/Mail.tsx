@@ -8,7 +8,7 @@ const TYPES: [string, string][] = [
   ['class_reminders', "Today's classes, to the volunteer taking them"],
   ['attendance_nudges', "Yesterday's classes with no attendance marked"],
   ['task_emails', 'Tasks: new, due, changes asked for, handed in'],
-  ['update_emails', 'New updates the person has not read'],
+  ['update_emails', 'New announcements the person has not read'],
   ['training_emails', 'Trainings assigned and not done yet'],
   ['cover_emails', 'Class hand-overs: asked, accepted, approved or declined'],
   ['time_off_emails', 'Time off: noted to the person, sent to supervisors, and the reply'],
@@ -94,7 +94,7 @@ export function MyMailPrefs({ onClose }: { onClose: () => void }) {
     <Modal title="Email reminders" onClose={onClose}>
       {done ? (<><p className="ok">Saved.</p><div className="actions"><span className="grow" /><button className="primary" onClick={onClose}>Done</button></div></>) : (
         <form onSubmit={save}>
-          <p className="muted">The portal can email you a short summary on days when there is something for you: classes, tasks, new updates, trainings.</p>
+          <p className="muted">The portal can email you a short summary on days when there is something for you: classes, tasks, new announcements, trainings.</p>
           <div className="field"><label htmlFor="mp_email">Send my reminders to</label>
             <input id="mp_email" type="email" placeholder={fallback || 'your email address'} value={email} onChange={e => setEmail(e.target.value)} />
             <small>{fallback ? `Leave empty to use ${fallback}.` : 'No address on file yet, so nothing is sent until you add one.'}</small></div>
