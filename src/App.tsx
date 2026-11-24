@@ -1,9 +1,10 @@
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './lib/auth'
 import { configured, supabase } from './lib/supabase'
 import { LOGO, loginName } from './lib/util'
 import { useState } from 'react'
 import Login from './pages/Login'
+import Join from './pages/Join'
 import { ChangeMyPassword } from './components/Logins'
 import { MyMailPrefs } from './components/Mail'
 import { ViewAsBanner, ViewAsPicker, stopViewAs } from './components/ViewAs'
@@ -36,6 +37,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function App() {
   const a = useAuth()
+  const where = useLocation()
   const [changing, setChanging] = useState(false)
   const [mailPrefs, setMailPrefs] = useState(false)
   const [viewing, setViewing] = useState(false)
@@ -43,6 +45,8 @@ export default function App() {
   const toNote = useTimeOffToNote(!!a.profile?.role && a.profile.active && a.canManage, a.profile?.id)
   const openTasks = useMyOpenTasks(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
+  // the public volunteer sign-up form: no login needed
+  if (where.pathname === '/join') return <Join />
   if (a.loading) return <Center><p className="muted">Loading…</p></Center>
   if (!a.session) return <Login />
   const role = a.profile?.active ? a.profile.role : null

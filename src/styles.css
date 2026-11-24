@@ -272,3 +272,15 @@ table.rooms-grid tbody th { text-align: left; text-transform: none; letter-spaci
 .rooms-grid .booking small { color: var(--muted); }
 small.block { display: block; }
 input.mini { width: 140px; padding: 4px 6px; font-size: 13px; }
+
+/* public volunteer sign-up form */
+.join-page { align-items: flex-start; }
+.auth-card.join-card { max-width: 760px; margin: 16px 0; }
+.join-card h3 { margin: 18px 0 6px; }
+.join-card .req { color: var(--bad, #b42318); }
+.join-card .check { align-items: flex-start; gap: 8px; }
+.join-done { text-align: center; padding: 12px 0 4px; }
+.hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+tr.detail-row td { background: var(--bg); }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 16px; }
+.detail-grid p, tr.detail-row p { margin: 2px 0; }

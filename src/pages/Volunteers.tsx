@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Crud from '../components/Crud'
 import { Field } from '../components/ui'
 import { CreateLogin, ResetPassword } from '../components/Logins'
+import { Applications } from '../components/Applications'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { loginName } from '../lib/util'
@@ -13,6 +14,7 @@ export default function Volunteers() {
   const [logins, setLogins] = useState<Record<string, any>>({})
   const [give, setGive] = useState<any | null>(null)
   const [reset, setReset] = useState<any | null>(null)
+  const [tick, setTick] = useState(0)
 
   const loadLogins = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('id, email, full_name, role, volunteer_id, active').not('volunteer_id', 'is', null)
@@ -47,11 +49,12 @@ export default function Volunteers() {
   ]
   return (
     <>
-      <Crud title="Volunteers" table="volunteers" fields={fields} order={{ col: 'full_name' }}
+      <Applications onAdded={() => { setTick(t => t + 1); a.reloadLookups() }} />
+      <Crud key={tick} title="Volunteers" table="volunteers" fields={fields} order={{ col: 'full_name' }}
         canAdd canEdit={mine} canDelete={a.isAdmin}
         defaults={{ status: 'Active', centre_id: o.myCentre, verified: false }}
         onChanged={() => { a.reloadLookups(); loadLogins() }}
-        hint="Give login creates a login name and first password for you to pass on. Volunteers cannot sign themselves up."
+        hint="Give login creates a login name and first password for you to pass on. People can send the sign-up form, but only you can add them here and give them a login."
         actions={r => !mine(r) ? null : !logins[r.id]
           ? (r.status === 'Active' ? <button className="link" onClick={() => setGive(r)}>Give login</button> : null)
           : (logins[r.id].role === 'volunteer' || a.isStaff) && logins[r.id].id !== a.profile?.id && (a.isAdmin || logins[r.id].role !== 'admin')
