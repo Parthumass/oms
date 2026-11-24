@@ -21,22 +21,25 @@ export default function Attendance() {
   const [newDate, setNewDate] = useState(today())
   const [open, setOpen] = useState<any | null>(null)
   const [covers, setCovers] = useState<any[]>([])
+  const [joining, setJoining] = useState<any | null>(null)
 
   const myVol = a.profile?.volunteer_id
   const canEditAll = !!cls && (a.canManage || isTeacher(cls))
   const canEdit = (s: any) => canEditAll || (!!myVol && s.taught_by === myVol)
   const key = (sid: string, stu: string) => sid + '|' + stu
+  // a class day before the student joined the class: not theirs, never counted
+  const notYet = (st: any, s: any) => !!st.joined_on && s.session_date < st.joined_on
 
   const load = useCallback(async () => {
     if (!classId) return
     setLoading(true); setErr('')
     const { from, to } = monthRange(ym.y, ym.m)
     const [st, se] = await Promise.all([
-      supabase.from('class_students').select('student_id, students(id, code, full_name, status)').eq('class_id', classId),
+      supabase.from('class_students').select('student_id, joined_on, students(id, code, full_name, status)').eq('class_id', classId),
       supabase.from('sessions').select('*').eq('class_id', classId).gte('session_date', from).lte('session_date', to).order('session_date'),
     ])
     if (st.error || se.error) setErr(friendly(st.error ?? se.error))
-    const list = (st.data ?? []).map((r: any) => r.students).filter(Boolean).sort((x: any, y: any) => x.full_name.localeCompare(y.full_name))
+    const list = (st.data ?? []).filter((r: any) => r.students).map((r: any) => ({ ...r.students, joined_on: r.joined_on })).sort((x: any, y: any) => x.full_name.localeCompare(y.full_name))
     const ses = se.data ?? []
     const m: Record<string, Mark> = {}
     if (ses.length) {
@@ -95,23 +98,23 @@ export default function Attendance() {
     setMark(s, stu, cur === undefined ? 'X' : cur === 'X' ? 'AB' : null)
   }
   const fillBlanks = async (s: any, value: Mark) => {
-    const rows = students.filter(st => !marks[key(s.id, st.id)]).map(st => ({ session_id: s.id, student_id: st.id, status: value }))
+    const rows = students.filter(st => !marks[key(s.id, st.id)] && !notYet(st, s)).map(st => ({ session_id: s.id, student_id: st.id, status: value }))
     if (!rows.length) return
     const { error } = await supabase.from('attendance').upsert(rows)
     if (error) setErr(friendly(error)); else load()
   }
 
-  const totals = (stu: string) => {
+  const totals = (st: any) => {
     let x = 0, n = 0
-    for (const s of sessions) { const v = marks[key(s.id, stu)]; if (v) { n++; if (v === 'X') x++ } }
+    for (const s of sessions) { if (notYet(st, s)) continue; const v = marks[key(s.id, st.id)]; if (v) { n++; if (v === 'X') x++ } }
     return { x, n, p: n ? Math.round((100 * x) / n) : null }
   }
-  const colPresent = (s: any) => students.filter(st => marks[key(s.id, st.id)] === 'X').length
+  const colPresent = (s: any) => students.filter(st => !notYet(st, s) && marks[key(s.id, st.id)] === 'X').length
 
   const exportCsv = () => downloadCsv(
     `attendance-${cls?.name}-${ym.y}-${String(ym.m + 1).padStart(2, '0')}`,
     ['Code', 'Student', ...sessions.map(s => fmtDate(s.session_date)), 'Present', 'Marked', '%'],
-    students.map(st => { const t = totals(st.id); return [st.code, st.full_name, ...sessions.map(s => marks[key(s.id, st.id)] ?? ''), t.x, t.n, t.p ?? ''] }),
+    students.map(st => { const t = totals(st); return [st.code, st.full_name, ...sessions.map(s => notYet(st, s) ? '-' : marks[key(s.id, st.id)] ?? ''), t.x, t.n, t.p ?? ''] }),
   )
   const shift = (d: number) => setYm(({ y, m }) => { const dt = new Date(y, m + d, 1); return { y: dt.getFullYear(), m: dt.getMonth() } })
   const volName = (id: string | null) => a.lookups.volunteers.find(v => v.id === id)?.full_name
@@ -180,10 +183,13 @@ export default function Attendance() {
             <tbody>
               {loading ? <tr><td colSpan={99} className="muted">Loading…</td></tr> :
                 students.length === 0 ? <tr><td colSpan={99} className="muted">No students in this class yet.</td></tr> :
-                  students.map(st => { const t = totals(st.id); return (
+                  students.map(st => { const t = totals(st); return (
                     <tr key={st.id}>
-                      <td className="sticky name"><b>{st.full_name}</b><small>{st.code}{st.status === 'Inactive' ? ' · inactive' : ''}</small></td>
-                      {sessions.map(s => { const v = marks[key(s.id, st.id)]; const ed = canEdit(s); return (
+                      <td className="sticky name"><b>{st.full_name}</b><small>{st.code}{st.status === 'Inactive' ? ' · inactive' : ''}
+                        {st.joined_on && <> · joined {fmtDate(st.joined_on)}</>}
+                        {a.canManage && <> · <button className="link" onClick={() => setJoining(st)}>{st.joined_on ? 'change' : 'joined late?'}</button></>}</small></td>
+                      {sessions.map(s => { if (notYet(st, s)) return <td key={s.id} className="cell"><span className="mark not-yet" title={`Joined this class on ${fmtDate(st.joined_on)}`}>–</span></td>
+                        const v = marks[key(s.id, st.id)]; const ed = canEdit(s); return (
                         <td key={s.id} className="cell">
                           <button className={'mark ' + (v === 'X' ? 'x' : v === 'AB' ? 'ab' : 'blank')} disabled={!ed}
                             onClick={() => cycle(s, st.id)} aria-label={`${st.full_name}, ${fmtDate(s.session_date)}: ${v === 'X' ? 'present' : v === 'AB' ? 'absent' : 'not marked'}`}>{v ?? ''}</button>
@@ -205,6 +211,7 @@ export default function Attendance() {
         <SessionModal session={open} canEdit={canEdit(open)} canManage={a.canManage} volunteers={o.volunteers}
           onFill={v => { fillBlanks(open, v); setOpen(null) }} onClose={() => setOpen(null)} onSaved={() => { setOpen(null); load() }} />
       )}
+      {joining && cls && <JoinedModal classId={cls.id} student={joining} onClose={() => setJoining(null)} onSaved={() => { setJoining(null); load() }} />}
     </>
   )
 }
@@ -251,6 +258,29 @@ function SessionModal(p: { session: any; canEdit: boolean; canManage: boolean; v
           {p.canEdit && <button className="primary">Save</button>}
         </div>
       </form>
+    </Modal>
+  )
+}
+
+/** Centre lead / admin: when a student joined this class. Days before it are not counted for them. */
+function JoinedModal(p: { classId: string; student: any; onClose: () => void; onSaved: () => void }) {
+  const [d, setD] = useState<string>(p.student.joined_on ?? '')
+  const [err, setErr] = useState('')
+  const save = async (value: string | null) => {
+    const { error } = await supabase.from('class_students').update({ joined_on: value }).eq('class_id', p.classId).eq('student_id', p.student.id)
+    if (error) setErr(friendly(error)); else p.onSaved()
+  }
+  return (
+    <Modal title={`When did ${p.student.full_name} join this class?`} onClose={p.onClose}>
+      <p className="muted">Class days before this date are not theirs: they show as a dash, cannot be marked, and do not count in their attendance or the class's.</p>
+      <div className="field"><label htmlFor="joined_on">Joined on</label><input id="joined_on" type="date" max={today()} value={d} onChange={e => setD(e.target.value)} /></div>
+      {err && <p className="error">{err}</p>}
+      <div className="actions">
+        <button type="button" onClick={() => save(null)}>In the class from the start</button>
+        <span className="grow" />
+        <button type="button" onClick={p.onClose}>Cancel</button>
+        <button className="primary" disabled={!d} onClick={() => save(d)}>Save</button>
+      </div>
     </Modal>
   )
 }

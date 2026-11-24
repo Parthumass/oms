@@ -124,6 +124,7 @@ table.grid td.cell { padding: 4px; text-align: center; vertical-align: middle; }
 .mark.blank { border-style: dashed; background: #fff; }
 .mark.x { background: var(--good-bg); border-color: #9fd3b5; color: var(--good); }
 .mark.ab { background: var(--bad-bg); border-color: #efb1ab; color: var(--bad); }
+.mark.not-yet { display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--muted, #8a8f98); font-weight: 400; cursor: default; }
 .mark:disabled { opacity: 1; cursor: default; }
 table.grid tfoot td { background: #fcfbfd; border-top: 2px solid var(--line); }
 
