@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { downloadCsv, fmtDate, friendly } from '../lib/util'
 import { MODES, useOptions } from './common'
+import { useTeams } from './Teams'
 
 export default function Training() {
   const a = useAuth()
@@ -113,6 +114,8 @@ function PeoplePicker({ title, session, what, people, note, onClose }: { title: 
   const [q, setQ] = useState('')
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const teams = useTeams()
   const table = (login: boolean) => `training_${what}${login ? '_logins' : ''}`
   useEffect(() => {
     const keys = async (w: string) => {
@@ -135,16 +138,38 @@ function PeoplePicker({ title, session, what, people, note, onClose }: { title: 
       : await supabase.from(table(o.login)).insert({ session_id: session.id, [col]: o.id } as any)
     if (res.error) { setErr(friendly(res.error)); setPicked(picked) }
   }
+  // tick every member of a team in one go
+  const addTeam = async (teamId: string) => {
+    if (!teamId) return
+    setErr(''); setBusy(true)
+    const { data, error } = await supabase.from('team_members').select('volunteer_id, profile_id').eq('team_id', teamId)
+    if (error) { setBusy(false); return setErr(friendly(error)) }
+    const next = new Set(picked)
+    for (const m of (data ?? []) as any[]) {
+      const login = !m.volunteer_id, id = (m.volunteer_id ?? m.profile_id) as string, key = (login ? 'p:' : 'v:') + id
+      if (next.has(key)) continue
+      const res = await supabase.from(table(login)).insert({ session_id: session.id, [login ? 'profile_id' : 'volunteer_id']: id } as any)
+      if (res.error) { setErr(friendly(res.error)); break }
+      next.add(key)
+    }
+    setPicked(next); setBusy(false)
+  }
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase()
     const list = s ? people.filter(o => (o.label + ' ' + (o.sub ?? '')).toLowerCase().includes(s)) : people
     const rank = (o: Person) => (picked.has(o.key) ? 0 : invited.has(o.key) ? 1 : o.login ? 2 : 3)
     return [...list].sort((x, y) => rank(x) - rank(y) || x.label.localeCompare(y.label))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, people, loading])
+  }, [q, people, loading, busy])
   return (
     <Modal title={title} onClose={onClose}>
       {note && <p className="muted">{note}</p>}
+      {teams.length > 0 && (
+        <div className="row" style={{ marginBottom: 8 }}>
+          <select value="" disabled={busy} onChange={e => addTeam(e.target.value)} aria-label="Tick a whole team">
+            <option value="">{busy ? 'Adding…' : 'Tick a whole team…'}</option>{teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+        </div>
+      )}
       <div className="row"><input placeholder="Search by name, ID or role" value={q} onChange={e => setQ(e.target.value)} /><span className="muted">{picked.size} selected</span></div>
       {err && <p className="error">{err}</p>}
       <div className="ticklist">

@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { friendly, loginName } from '../lib/util'
 import { Modal } from '../components/ui'
 import { useOptions } from './common'
+import { useTeams } from './Teams'
 
 const ROLE_NAMES: Record<string, string> = { admin: 'Admin team', board: 'Board', centre_lead: 'Centre leads', volunteer: 'Volunteers', partner: 'Partners' }
 const safeUrl = (u?: string | null) => (u && /^https?:\/\//i.test(u) ? u : undefined)
@@ -57,7 +58,7 @@ export default function Updates({ onSeen }: { onSeen?: () => void }) {
     <>
       <div className="title-row"><h1>Updates</h1>{a.canManage && <button className="primary" onClick={() => setPosting({})}>New update</button>}</div>
       {err && <p className="error">{err}</p>}
-      {rows.length === 0 && <p className="card pad muted">No updates yet.{a.canManage ? ' Post one to reach everyone, a team, or selected people.' : ''}</p>}
+      {rows.length === 0 && <p className="card pad muted">No updates yet.{a.canManage ? ' Post one to reach everyone, a group, a team, or selected people.' : ''}</p>}
       <div className="feed">
         {rows.map(r => (
           <article key={r.id} className={'card pad post' + (fresh.has(r.id) ? ' new' : '')}>
@@ -109,6 +110,13 @@ function PostForm({ post, onClose, onSaved }: { post: any; onClose: () => void; 
   }, [a.isStaff, a.lookups.volunteers, a.profile, isNew, me, post.audience, post.id])
 
   const shown = useMemo(() => { const s = q.trim().toLowerCase(); return s ? people.filter(p => who(p).toLowerCase().includes(s)) : people }, [people, q])
+  const teams = useTeams()
+  // tick every member of a team who has a login
+  const addTeam = async (teamId: string) => {
+    if (!teamId) return
+    const { data } = await supabase.rpc('team_people', { p_team: teamId })
+    setPicked(s => new Set([...s, ...((data ?? []) as any[]).map(m => m.profile_id).filter((id: string) => id && id !== me)]))
+  }
   const toggle = (id: string) => setPicked(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const save = async (e: React.FormEvent) => {
@@ -144,7 +152,7 @@ function PostForm({ post, onClose, onSaved }: { post: any; onClose: () => void; 
         <h3>Who should see it</h3>
         <div className="chips" role="radiogroup" aria-label="Who should see it">
           {a.isStaff && <button type="button" className={'chip' + (v.audience === 'everyone' ? ' on' : '')} aria-pressed={v.audience === 'everyone'} onClick={() => set('audience', 'everyone')}>Everyone</button>}
-          <button type="button" className={'chip' + (v.audience === 'team' ? ' on' : '')} aria-pressed={v.audience === 'team'} onClick={() => set('audience', 'team')}>A team</button>
+          <button type="button" className={'chip' + (v.audience === 'team' ? ' on' : '')} aria-pressed={v.audience === 'team'} onClick={() => set('audience', 'team')}>A group</button>
           <button type="button" className={'chip' + (v.audience === 'people' ? ' on' : '')} aria-pressed={v.audience === 'people'} onClick={() => set('audience', 'people')}>Selected people</button>
         </div>
         {v.audience === 'everyone' && <p className="muted">Everyone with a login, except partner logins.</p>}
@@ -163,7 +171,9 @@ function PostForm({ post, onClose, onSaved }: { post: any; onClose: () => void; 
         )}
         {v.audience === 'people' && (
           <>
-            <div className="row top-gap"><input placeholder="Search people" value={q} onChange={e => setQ(e.target.value)} /><span className="muted">{picked.size} selected</span></div>
+            <div className="row top-gap"><input placeholder="Search people" value={q} onChange={e => setQ(e.target.value)} />
+              {teams.length > 0 && <select value="" onChange={e => addTeam(e.target.value)} aria-label="Tick a whole team"><option value="">Tick a whole team…</option>{teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>}
+              <span className="muted">{picked.size} selected</span></div>
             <div className="ticklist">
               {shown.length === 0 && <p className="muted pad">{a.isStaff ? 'Nobody else has a login yet.' : 'None of your volunteers has a login yet.'}</p>}
               {shown.map(p => (

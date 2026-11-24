@@ -27,6 +27,7 @@ import Tasks, { useMyOpenTasks } from './pages/Tasks'
 import Updates, { useUnreadUpdates } from './pages/Updates'
 import Calendar from './pages/Calendar'
 import TimeOff, { useTimeOffToNote } from './pages/TimeOff'
+import Teams from './pages/Teams'
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', board: 'Board', centre_lead: 'Centre Lead', volunteer: 'Volunteer', partner: 'Partner',
@@ -56,10 +57,10 @@ export default function App() {
 
   const nav: [string, string, boolean][] = [
     ['/', a.isVolunteer ? 'My classes' : 'Dashboard', true],
+    ['/calendar', 'Calendar', !a.isPartner],
     ['/students', 'Students', a.canManage],
     ['/volunteers', 'Volunteers', a.canManage],
     ['/classes', 'Classes', a.canManage],
-    ['/calendar', 'Calendar', !a.isPartner],
     ['/updates', updates.unread ? `Updates (${updates.unread})` : 'Updates', !a.isPartner],
     ['/tasks', openTasks ? `Tasks (${openTasks})` : 'Tasks', !a.isPartner],
     ['/time-off', toNote ? `Time off (${toNote})` : 'Time off', !a.isPartner],
@@ -73,6 +74,7 @@ export default function App() {
     ['/checklist', 'Monthly checklist', a.canManage],
     ['/reports', 'Reports', !a.isVolunteer],
     ['/setup', 'Setup', a.isAdmin],
+    ['/teams', 'Teams', a.isStaff],
     ['/users', 'Logins', a.isStaff],
   ]
   const centre = a.lookups.centres.find(c => c.id === a.profile?.centre_id)
@@ -107,6 +109,7 @@ export default function App() {
           {!a.isPartner && <Route path="/calendar" element={<Calendar />} />}
           {!a.isPartner && <Route path="/tasks" element={<Tasks />} />}
           {!a.isPartner && <Route path="/time-off" element={<TimeOff />} />}
+          {a.isStaff && <Route path="/teams" element={<Teams />} />}
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/assessments" element={<Assessments />} />
           {SHOW_HOLISTIC && !a.isPartner && <Route path="/holistic" element={<Holistic />} />}

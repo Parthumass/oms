@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { fmtDate, friendly, loginName, today } from '../lib/util'
 import { Modal, Tabs } from '../components/ui'
+import { useTeams } from './Teams'
 
 const BUCKET = 'task-files'
 const MAX_MB = 20
@@ -16,7 +17,10 @@ const safeUrl = (u?: string | null) => (u && /^https?:\/\//i.test(u) ? u : undef
 export default function Tasks() {
   const a = useAuth()
   const me = a.profile!.id
-  const tabs = a.isStaff ? ['My tasks', 'Given by me', 'All tasks'] : a.isLead ? ['My tasks', 'Given by me'] : ['My tasks']
+  const teams = useTeams()
+  // anyone in a team can give tasks to that team; otherwise only the admin team, board and centre leads
+  const canGive = a.canManage || teams.length > 0
+  const tabs = ['My tasks', ...(canGive ? ['Given by me'] : []), ...(teams.length ? ['Team tasks'] : []), ...(a.isStaff ? ['All tasks'] : [])]
   const [tab, setTab] = useState(a.canManage ? 'Given by me' : 'My tasks')
   const [rows, setRows] = useState<any[]>([])
   const [people, setPeople] = useState<any[]>([])
@@ -40,8 +44,8 @@ export default function Tasks() {
   }, [a.canManage, a.isStaff, a.lookups.volunteers, a.profile, me])
 
   const shown = useMemo(() => rows
-    .filter(r => (tab === 'My tasks' ? r.assignee === me : tab === 'Given by me' ? r.assigned_by === me : true))
-    .filter(r => showDone || r.status !== 'Done'), [rows, tab, showDone, me])
+    .filter(r => (tab === 'My tasks' ? r.assignee === me : tab === 'Given by me' ? r.assigned_by === me : tab === 'Team tasks' ? !!r.team_id && teams.some(t => t.id === r.team_id) : true))
+    .filter(r => showDone || r.status !== 'Done'), [rows, tab, showDone, me, teams])
   const late = (r: any) => r.due_date && r.due_date < today() && r.status !== 'Done' && r.status !== 'Submitted'
 
   return (
@@ -53,11 +57,12 @@ export default function Tasks() {
           <h2>{tab} <span className="count">{shown.length}</span></h2>
           <div className="row">
             <label className="check"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show finished</label>
-            {a.canManage && <button className="primary" onClick={() => setCreating(true)}>New task</button>}
+            {canGive && <button className="primary" onClick={() => setCreating(true)}>New task</button>}
           </div>
         </div>
         <p className="muted hint">{tab === 'My tasks'
           ? 'Work given to you. Open a task to add your notes, links or files, then hand it in.'
+          : tab === 'Team tasks' ? 'Every task given within your teams. Any member of a team can give a task to that team.'
           : 'Give someone a piece of work: a social media post, a report, a lesson plan. They add their work here and you review it.'}</p>
         {err && <p className="error">{err}</p>}
         <div className="table-wrap"><table>
@@ -66,8 +71,8 @@ export default function Tasks() {
             {shown.length === 0 && <tr><td colSpan={7} className="muted">{tab === 'My tasks' ? 'Nothing to do right now.' : 'No tasks here yet.'}</td></tr>}
             {shown.map(r => (
               <tr key={r.id}>
-                <td><b>{r.title}</b></td><td>{r.category}</td>
-                <td>{tab === 'My tasks' ? r.assigned_by_name : r.assignee_name}</td>
+                <td><b>{r.title}</b>{r.team_name && <> <span className="pill info">{r.team_name}</span></>}</td><td>{r.category}</td>
+                <td>{tab === 'My tasks' ? r.assigned_by_name : tab === 'Team tasks' ? `${r.assignee_name} (from ${r.assigned_by_name})` : r.assignee_name}</td>
                 <td>{fmtDate(r.due_date)}{late(r) && <small className="late"> overdue</small>}</td>
                 <td><span className={'pill ' + pill(r.status)}>{r.status}</span></td>
                 <td className="num">{r.task_updates?.[0]?.count ?? 0}</td>
@@ -77,7 +82,7 @@ export default function Tasks() {
           </tbody>
         </table></div>
       </section>
-      {creating && <TaskForm people={people} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); load() }} />}
+      {creating && <TaskForm people={people} teams={teams} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); load() }} />}
       {open && <TaskDetail task={open} people={people} onClose={() => { setOpen(null); load() }} />}
     </>
   )
@@ -85,12 +90,25 @@ export default function Tasks() {
 
 function who(p: any) { return `${p.full_name || loginName(p.email)}${p.code ? ` (${p.code})` : ''}` }
 
-function TaskForm({ task, people, onClose, onSaved }: { task?: any; people: any[]; onClose: () => void; onSaved: () => void }) {
+function TaskForm({ task, people: everyone, teams = [], onClose, onSaved }: { task?: any; people: any[]; teams?: any[]; onClose: () => void; onSaved: () => void }) {
   const a = useAuth()
   const [v, setV] = useState<any>(task ? { ...task } : { category: 'Social media', assignee: '', title: '', details: '', due_date: '' })
   const [err, setErr] = useState('')
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [q, setQ] = useState('')
+  // a new task can be for a team: then the people to choose from are that team's members
+  const [teamId, setTeamId] = useState<string>(!task && !a.canManage && teams.length === 1 ? teams[0].id : '')
+  const [members, setMembers] = useState<any[] | null>(null)
+  useEffect(() => {
+    setPicked(new Set()); setMembers(null)
+    if (!teamId) return
+    supabase.rpc('team_people', { p_team: teamId }).then(({ data }) => setMembers(data ?? []))
+  }, [teamId])
+  const team = teams.find(t => t.id === teamId)
+  const noLogin = (members ?? []).filter(m => !m.profile_id).length
+  const people = teamId
+    ? (members ?? []).filter(m => m.profile_id && m.profile_id !== a.profile!.id).map(m => ({ id: m.profile_id, full_name: m.full_name, code: m.code, role: m.role, email: '' }))
+    : everyone
   const set = (k: string, x: any) => setV((s: any) => ({ ...s, [k]: x }))
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setErr('')
@@ -104,7 +122,8 @@ function TaskForm({ task, people, onClose, onSaved }: { task?: any; people: any[
     // a new task for several people: each person gets their own copy, with its own status and uploads
     const chosen = people.filter(x => picked.has(x.id))
     if (!chosen.length) return setErr('Choose at least one person to give it to.')
-    const by = { assigned_by: a.profile!.id, assigned_by_name: a.profile!.full_name || loginName(a.profile!.email) }
+    if (!a.canManage && !teamId) return setErr('Choose the team this task is for.')
+    const by = { assigned_by: a.profile!.id, assigned_by_name: a.profile!.full_name || loginName(a.profile!.email), team_id: teamId || null, team_name: team?.name ?? null }
     const res = await supabase.from('tasks').insert(chosen.map(p => ({ ...base, ...by, assignee: p.id, assignee_name: who(p) })))
     if (res.error) setErr(friendly(res.error)); else onSaved()
   }
@@ -117,6 +136,13 @@ function TaskForm({ task, people, onClose, onSaved }: { task?: any; people: any[
       <form onSubmit={save}>
         <div className="form-grid">
           <div className="field span"><label htmlFor="tk_title">What needs doing</label><input id="tk_title" required value={v.title} onChange={e => set('title', e.target.value)} /></div>
+          {!task && teams.length > 0 && (
+            <div className="field span"><label htmlFor="tk_team">Team</label>
+              <select id="tk_team" value={teamId} onChange={e => setTeamId(e.target.value)}>
+                {a.canManage ? <option value="">No team (choose from everyone)</option> : teams.length > 1 && <option value="">Select…</option>}
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+              <small>{teamId ? `Everyone in ${team?.name} can see this task.${noLogin ? ` ${noLogin} member${noLogin === 1 ? ' has' : 's have'} no login yet and cannot be given tasks.` : ''}` : a.canManage ? 'Pick a team to give its members a task.' : 'You can give tasks to the members of your teams.'}</small></div>
+          )}
           {task ? (
             <div className="field"><label htmlFor="tk_who">Give it to</label>
               <select id="tk_who" required value={v.assignee} onChange={e => set('assignee', e.target.value)}>
@@ -137,7 +163,7 @@ function TaskForm({ task, people, onClose, onSaved }: { task?: any; people: any[
                     </label>
                   ))}
               </div>
-              <small>{a.isStaff ? 'Anyone who has a login.' : 'Volunteers of your centre who have a login.'} Pick more than one and each person gets their own copy to hand in.</small></div>
+              <small>{teamId ? `Members of ${team?.name}.` : a.isStaff ? 'Anyone who has a login.' : 'Volunteers of your centre who have a login.'} Pick more than one and each person gets their own copy to hand in.</small></div>
           )}
           <div className="field"><label htmlFor="tk_cat">Type</label><select id="tk_cat" value={v.category} onChange={e => set('category', e.target.value)}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div>
           <div className="field"><label htmlFor="tk_due">Due date</label><input id="tk_due" type="date" value={v.due_date ?? ''} onChange={e => set('due_date', e.target.value)} /></div>
