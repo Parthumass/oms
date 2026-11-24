@@ -4,12 +4,14 @@
 // "## " starts a section; each section gets its own "I have read this" tick.
 
 export const AGREEMENT_PDF = 'PEF Vol Agre.docx.pdf'
-export const DRAFT_TITLE = 'Pratyagra Education Foundation: Volunteer Agreement 2026-27'
+export const DRAFT_TITLE = 'Pratyagra Education Foundation: Volunteer Agreement (Memorandum of Understanding) 2026-27'
 
 export const DRAFT_BODY = `## About this agreement
 Please read thoroughly the promises and requirements to be adhered by all volunteers and staff. This is a promise between us and you to be able to provide the best to everyone we work with and vice versa, creating a safe space.
 
-A minimum of 60 sessions, ideally 2 times a week between June to March, are required for a volunteering certificate to be issued, and 40 hours for students who volunteer with us. Marking attendance for your students is mandatory.
+This is a memorandum of understanding between you and Pratyagra Education Foundation (PEF). It is binding in honour only and is not a legally binding contract.
+
+To receive a volunteering certificate, volunteers complete a minimum of 60 sessions between June and March, ideally 2 sessions a week. Student volunteers complete a minimum of 40 hours. Marking attendance for your students after every session is mandatory.
 
 ## Guidelines for volunteers (part A)
 Giving your time so generously to help our loving children is an act of love and compassion and is much appreciated by the children and by the PEF founders and its management. So while there would be formal training sessions organized from time to time, here are some basic guidelines to help all the volunteers in their efforts.
@@ -24,7 +26,7 @@ Giving your time so generously to help our loving children is an act of love and
 ## Guidelines for volunteers (part B)
 1. We have the opportunity to make them into better citizens so we have to continuously emphasize the rules of basic manners and good conduct like no littering, no swearing, no fighting, sharing, tolerance of all kinds of people, compassion towards others, are all concepts we can repeatedly teach them.
 2. While teaching we need to reassure them that neither we nor the other kids will laugh at them if they make a mistake. The important thing is to try and make an effort. Success will come slowly but surely.
-3. We need to encourage them to speak in English as often as they can but also explain things to them in their vernacular language, mostly Hindi or Marathi.
+3. We need to encourage them to speak in English as often as they can but also explain things to them in their own language, such as Hindi or the local language of their centre.
 4. Keep a track record in writing of what you are teaching so even if you miss a session another volunteer can take over without breaking the link.
 5. It's our job to be on time, in fact a little earlier than the class time as this not only helps us to prepare for the session but also sets an example to the kids to be on time.
 
@@ -37,24 +39,24 @@ PEF accepts your voluntary service for the year 2026-27. This work is designed t
 4. Grievance redressal: to endeavor to resolve in a fair and just manner any problems, grievances or difficulties which may be encountered while you volunteer with us. In the event of an unresolved problem, to offer an opportunity to discuss the issues.
 
 ## What you commit to
-I, the PEF volunteer, agree to be with Pratyagra Education Foundation at their learning centre and commit to the following:
+I, the PEF volunteer, agree to volunteer with Pratyagra Education Foundation, online or at its learning centres, and commit to the following:
 
 - To help Pratyagra Education Foundation deliver education to underprivileged children.
 - To perform my volunteering role to the best of my ability. To adhere to the organization's standard operating procedures (SOP) and guidelines concerning its volunteers.
-- To maintain the books provided by Pratyagra Education Foundation and return them after the session; in case of loss, pay for the replacement of the same.
+- To take care of any books, devices or materials provided by Pratyagra Education Foundation and return them when asked; in case of loss, replace them.
 - To meet the time commitments and standards undertaken, other than in exceptional circumstances, and provide reasonable notice to make alternative arrangements.
 - To behave in an exemplary and competent manner at all times, refrain from using foul or abusive language around and with students, and behave with dignity and respect. To not engage in any form of abuse (sexual, violence or verbal) towards children.
-- To perform full time volunteering service with diligence and energy without an expectation of monetary return.
+- To give my volunteering time, whatever I have committed to, with diligence and energy and without any expectation of monetary return.
 - To bear my own individual expenses including but not limited to travel, food, medical expenses and any other expenses of any nature.
 - To respect rights, dignity and culture of students, PEF management and others I come in contact with during my tenure.
 - To engage with children that I am assigned with from time to time and to encourage in them academic knowledge and life values just as I would do to a child in my own home.
 - To advocate discipline along with love and indulgence at our centers.
 - To be careful of crossing over the fine line where strictness can spill into mistreatment.
 
-## General consent
-1. I will not hold PEF, its boards, officers, agents and employees responsible for any acts whether the acts are foreseeable or not, expected or unexpected.
-2. I shall not seek compensation of any nature in any way or seek any legal redress claim or action, causes of action or costs from PEF, its board, officers or employees or individually or be entitled to any costs, compensation for any direct or indirect losses that may accrue at any point of time.
-3. This agreement is binding in honour only, is not intended to be a legally binding contract between us and may be cancelled at any time at the discretion of either party.
+## Our understanding
+1. I volunteer of my own free will and understand that this is unpaid voluntary service, not employment.
+2. I understand that PEF does not pay for my personal expenses or losses that come from my volunteering, and I will not ask PEF, its board, officers or staff for payment or compensation for them.
+3. This memorandum of understanding is binding in honour only. It is not a legally binding contract between us, and either of us may end it at any time.
 
 ## Child Protection Policy
 Pratyagra Education Foundation is committed to ensuring all children are safe and protected. The safety, rights and well-being of children participating in our programs is a priority in our daily operations. The intent of this Child Protection Policy is to guide every stakeholder of Pratyagra Education Foundation including employees, volunteers, and program participants in developing appropriate relationships with the children we work with, thus ensuring a safe environment for them. This policy aims to protect children from intentional and non-intentional harm or abuse.
@@ -86,6 +88,18 @@ Child abuse or maltreatment constitutes all forms of physical and/or emotional i
 11. Do anything that you have been asked to avoid by the Head of Center at any point of time. Record audio, video or photographs of the child, except with the explicit approval of the Head of Center AND the child.
 12. By agreeing to volunteer, you undertake to abide by the terms of this Child Protection Policy and with other instructions given to you from time to time by the Head of Center communicated via SMS, e-mail or WhatsApp.
 
+## Protecting children's personal data (DPDP)
+India's Digital Personal Data Protection Act, 2023 and the DPDP Rules, 2025 set out how personal data must be handled. The children we teach are under 18, so their data needs the most care. As a volunteer, you will:
+
+1. Use children's personal data (names, photos, phone numbers, addresses, marks, attendance, family details and anything about their health or background) only for teaching them and for PEF's work, and only as much as the task needs.
+2. Keep that data in the Pratyagra portal and PEF's official groups or drives. Do not copy it to your personal phone, notes, spreadsheets, chat groups or personal email, and do not download or export it unless your Head of Center asks you to.
+3. Never share a child's personal data with anyone outside PEF, including on social media, without written permission from the Head of Center. Photos or videos of children are used only with the consent PEF has from the child's parent or guardian, and only through PEF's official channels.
+4. Never contact a child or their family through personal accounts or numbers for anything other than PEF sessions, and never track, follow or profile a child online.
+5. Keep your portal login to yourself: use a strong password, do not share it, sign out on shared devices, and lock your phone and computer.
+6. Tell your Head of Center or the PEF admin team straight away if children's data is lost, shared by mistake, or seen by someone who should not see it, so PEF can act and inform the people affected where needed.
+7. When you stop volunteering, delete any children's data you still have on your own devices and return or hand over anything belonging to PEF.
+8. Your own details (contact details, date of birth, emergency contact) are kept by PEF only to manage your volunteering. You can ask the PEF admin team to see, correct or delete them.
+
 ## Declaration
-I hereby declare that I have fully read and understood the above policy and agree to abide by the same. I understand that I am bound by the terms of this Policy and that failure to do so will result in termination of volunteering and any other measures as may be deemed appropriate by Pratyagra Education Foundation.
+I hereby declare that I have fully read and understood this memorandum, the Child Protection Policy and the data protection guidelines above, and agree to abide by them. I understand that failure to do so will result in the end of my volunteering and any other measures as may be deemed appropriate by Pratyagra Education Foundation.
 `
