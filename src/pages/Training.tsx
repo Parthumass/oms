@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Crud from '../components/Crud'
 import { Field, LinkPicker, Modal, Tabs } from '../components/ui'
 import { supabase } from '../lib/supabase'
@@ -24,12 +24,29 @@ function ManageTraining() {
   useEffect(() => { supabase.from('training_topics').select('*').eq('active', true).order('sort').then(({ data }) => setTopics(data ?? [])) }, [tick])
   const vols = a.lookups.volunteers.filter(v => v.status === 'Active' && (a.isStaff || v.centre_id === a.profile?.centre_id))
   const volOpts = vols.map(v => ({ value: v.id, label: v.full_name, sub: v.code }))
+  // people with a login but no volunteer record: board, admin team, centre leads
+  const [staff, setStaff] = useState<any[]>([])
+  const [mineIn, setMineIn] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    supabase.from('profiles').select('id, full_name, email, code, role, title, volunteer_id, active').limit(2000)
+      .then(({ data }) => setStaff((data ?? []).filter((p: any) => p.active && p.role && p.role !== 'partner' && !p.volunteer_id)))
+    supabase.from('training_invites_logins').select('session_id').eq('profile_id', a.profile!.id)
+      .then(({ data }) => setMineIn(new Set((data ?? []).map((r: any) => r.session_id))))
+  }, [a.profile, tick])
+  const ROLE: Record<string, string> = { admin: 'Admin team', board: 'Board', centre_lead: 'Centre lead' }
+  const people: Person[] = [
+    ...staff.map(p => ({ key: 'p:' + p.id, id: p.id as string, login: true, label: p.full_name || p.email, sub: [p.code, p.title || ROLE[p.role]].filter(Boolean).join(' · ') })),
+    ...volOpts.map(v => ({ key: 'v:' + v.value, id: v.value, login: false, label: v.label, sub: v.sub })),
+  ]
   const fields: Field[] = [
     { key: 'session_date', label: 'Date', type: 'date', required: true },
-    { key: 'title', label: 'Title', required: true },
+    { key: 'title', label: 'Title', required: true, list: r => <>{r.title}{mineIn.has(r.id) && <> <span className="pill good">You are invited</span></>}</> },
     { key: 'kind', label: 'Kind', type: 'select', options: ['Meeting', 'Core', 'Monthly', 'Other'], required: true,
       help: 'Meeting for a meeting; Core or Monthly for a training session.' },
     { key: 'start_time', label: 'Start time (India time)', type: 'time' },
+    { key: 'audience', label: 'Who can see it', type: 'select', options: a.isStaff ? ['Everyone', 'Invited only', 'Board only'] : ['Everyone', 'Invited only'], required: true,
+      help: 'Everyone: all volunteers and leads of the centre (or of every centre if none is chosen). Invited only: just the people you invite. Board only: the board and admin team.',
+      list: r => (r.audience === 'Everyone' ? '' : <span className="pill info">{r.audience}</span>) },
     { key: 'topic_id', label: 'Training', type: 'select', options: topics.map(t => ({ value: t.id, label: t.name + (t.is_core ? ' (core)' : '') })),
       help: 'If this session delivers one of the trainings, pick it. Everyone marked present is then recorded as having completed it.' },
     { key: 'centre_id', label: 'Centre', type: 'select', options: a.isLead ? o.centres : o.allCentres, required: a.isLead, locked: a.isLead,
@@ -38,7 +55,7 @@ function ManageTraining() {
     { key: 'mode', label: 'Mode', type: 'select', options: MODES, list: false },
     { key: 'duration_min', label: 'Minutes', type: 'number', list: false },
     { key: 'description', label: 'Description', type: 'textarea', list: false },
-    { key: '_n', label: 'Attended', form: false, list: r => { const at = r.training_attendance?.[0]?.count ?? 0, inv = r.training_invites?.[0]?.count ?? 0; return inv ? `${at} (${inv} invited)` : at } },
+    { key: '_n', label: 'Attended', form: false, list: r => { const at = (r.training_attendance?.[0]?.count ?? 0) + (r.training_attendance_logins?.[0]?.count ?? 0), inv = (r.training_invites?.[0]?.count ?? 0) + (r.training_invites_logins?.[0]?.count ?? 0); return inv ? `${at} (${inv} invited)` : at } },
   ]
   return (
     <>
@@ -63,10 +80,10 @@ function ManageTraining() {
       )}
       {tab === 'Tracker' && <Tracker topics={topics} vols={vols} />}
       {tab === 'Meetings and sessions' && (
-        <Crud key={'s' + tick} title="Meetings and sessions" table="training_sessions" select="*, training_attendance(count), training_invites(count)" addLabel="Add meeting or session" fields={fields}
+        <Crud key={'s' + tick} title="Meetings and sessions" table="training_sessions" select="*, training_attendance(count), training_invites(count), training_attendance_logins(count), training_invites_logins(count)" addLabel="Add meeting or session" fields={fields}
           order={{ col: 'session_date', asc: false }} canAdd canDelete
           canEdit={r => a.isStaff || r.centre_id === a.profile?.centre_id}
-          defaults={{ kind: 'Meeting', centre_id: o.myCentre, mode: 'Online' }}
+          defaults={{ kind: 'Meeting', centre_id: o.myCentre, mode: 'Online', audience: 'Everyone' }}
           hint="Add a meeting or training session, use Invite to choose who should come, then Mark attendance afterwards. Record shows who was invited and who was there."
           actions={r => <><button className="link" onClick={() => setInvite(r)}>Invite</button><button className="link" onClick={() => setMark(r)}>Mark attendance</button><button className="link" onClick={() => setRecord(r)}>Record</button></>} />
       )}
@@ -76,31 +93,71 @@ function ManageTraining() {
           canEdit options={volOpts} note="Tick the volunteers who have to do this training. Unticking removes it from their list."
           onClose={() => { setAssign(null); setTick(t => t + 1) }} />
       )}
-      {invite && (
-        <LinkPicker title={`Invite to: ${invite.title}`} table="training_invites" parentKey="session_id" parentId={invite.id} childKey="volunteer_id"
-          canEdit options={volOpts} note="Tick everyone who should come. They see it under their trainings and meetings."
-          onClose={() => { setInvite(null); setTick(t => t + 1) }} />
-      )}
-      {mark && <MarkAttendance session={mark} volOpts={volOpts} onClose={() => { setMark(null); setTick(t => t + 1) }} />}
+      {invite && <PeoplePicker title={`Invite to: ${invite.title}`} session={invite} what="invites" people={people}
+        note="Tick everyone who should come: volunteers, centre leads, board or admin team. They see it under their trainings and meetings."
+        onClose={() => { setInvite(null); setTick(t => t + 1) }} />}
+      {mark && <PeoplePicker title={`Who attended: ${mark.title}`} session={mark} what="attendance" people={people}
+        note="Tick everyone who was there. Invited people are listed first."
+        onClose={() => { setMark(null); setTick(t => t + 1) }} />}
       {record && <SessionRecord session={record} onClose={() => setRecord(null)} />}
     </>
   )
 }
 
-/** Attendance picker with the invited people marked, so they are easy to find. */
-function MarkAttendance({ session, volOpts, onClose }: { session: any; volOpts: { value: string; label: string; sub?: string }[]; onClose: () => void }) {
-  const [invited, setInvited] = useState<Set<string> | null>(null)
+type Person = { key: string; id: string; login: boolean; label: string; sub?: string }
+
+/** Tick people for a meeting: who is invited, or who attended. Works for volunteers and for people who only have a login. */
+function PeoplePicker({ title, session, what, people, note, onClose }: { title: string; session: any; what: 'invites' | 'attendance'; people: Person[]; note?: string; onClose: () => void }) {
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [invited, setInvited] = useState<Set<string>>(new Set())
+  const [q, setQ] = useState('')
+  const [err, setErr] = useState('')
+  const [loading, setLoading] = useState(true)
+  const table = (login: boolean) => `training_${what}${login ? '_logins' : ''}`
   useEffect(() => {
-    supabase.from('training_invites').select('volunteer_id').eq('session_id', session.id)
-      .then(({ data }) => setInvited(new Set((data ?? []).map((r: any) => r.volunteer_id))))
-  }, [session.id])
-  if (!invited) return null
-  const options = volOpts.map(o => ({ ...o, sub: invited.has(o.value) ? `invited · ${o.sub ?? ''}` : o.sub }))
-    .sort((x, y) => Number(invited.has(y.value)) - Number(invited.has(x.value)))
+    const keys = async (w: string) => {
+      const [v, l] = await Promise.all([
+        supabase.from(`training_${w}`).select('volunteer_id').eq('session_id', session.id),
+        supabase.from(`training_${w}_logins`).select('profile_id').eq('session_id', session.id),
+      ])
+      return new Set([...(v.data ?? []).map((r: any) => 'v:' + r.volunteer_id), ...(l.data ?? []).map((r: any) => 'p:' + r.profile_id)])
+    }
+    Promise.all([keys(what), what === 'attendance' ? keys('invites') : Promise.resolve(new Set<string>())])
+      .then(([p, i]) => { setPicked(p); setInvited(i); setLoading(false) })
+  }, [session.id, what])
+  const toggle = async (o: Person) => {
+    setErr('')
+    const on = picked.has(o.key)
+    const next = new Set(picked); on ? next.delete(o.key) : next.add(o.key); setPicked(next)
+    const col = o.login ? 'profile_id' : 'volunteer_id'
+    const res = on
+      ? await supabase.from(table(o.login)).delete().eq('session_id', session.id).eq(col, o.id)
+      : await supabase.from(table(o.login)).insert({ session_id: session.id, [col]: o.id } as any)
+    if (res.error) { setErr(friendly(res.error)); setPicked(picked) }
+  }
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase()
+    const list = s ? people.filter(o => (o.label + ' ' + (o.sub ?? '')).toLowerCase().includes(s)) : people
+    const rank = (o: Person) => (picked.has(o.key) ? 0 : invited.has(o.key) ? 1 : o.login ? 2 : 3)
+    return [...list].sort((x, y) => rank(x) - rank(y) || x.label.localeCompare(y.label))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, people, loading])
   return (
-    <LinkPicker title={`Who attended: ${session.title}`} table="training_attendance" parentKey="session_id" parentId={session.id} childKey="volunteer_id"
-      canEdit options={options} note={invited.size ? 'Tick everyone who was there. Search "invited" to see only the people who were invited.' : 'Tick everyone who was there.'}
-      onClose={onClose} />
+    <Modal title={title} onClose={onClose}>
+      {note && <p className="muted">{note}</p>}
+      <div className="row"><input placeholder="Search by name, ID or role" value={q} onChange={e => setQ(e.target.value)} /><span className="muted">{picked.size} selected</span></div>
+      {err && <p className="error">{err}</p>}
+      <div className="ticklist">
+        {loading ? <p className="muted">Loading…</p> : shown.length === 0 ? <p className="muted">Nobody to choose from yet.</p> :
+          shown.map(o => (
+            <label key={o.key} className="tick">
+              <input type="checkbox" checked={picked.has(o.key)} onChange={() => toggle(o)} />
+              <span>{o.label}</span><small>{[invited.has(o.key) && 'invited', o.sub].filter(Boolean).join(' · ')}</small>
+            </label>
+          ))}
+      </div>
+      <div className="actions"><span className="grow" /><button className="primary" onClick={onClose}>Done</button></div>
+    </Modal>
   )
 }
 
@@ -111,10 +168,14 @@ function SessionRecord({ session, onClose }: { session: any; onClose: () => void
     Promise.all([
       supabase.from('training_invites').select('volunteer_id, volunteers(full_name, code)').eq('session_id', session.id),
       supabase.from('training_attendance').select('volunteer_id, marked_at, volunteers(full_name, code)').eq('session_id', session.id),
-    ]).then(([i, t]) => {
+      supabase.from('training_invites_logins').select('profile_id, person_name, person_code').eq('session_id', session.id),
+      supabase.from('training_attendance_logins').select('profile_id, person_name, person_code').eq('session_id', session.id),
+    ]).then(([i, t, il, tl]) => {
       const m = new Map<string, any>()
       for (const r of (i.data ?? []) as any[]) m.set(r.volunteer_id, { name: r.volunteers?.full_name, code: r.volunteers?.code, invited: true, present: false })
       for (const r of (t.data ?? []) as any[]) m.set(r.volunteer_id, { ...(m.get(r.volunteer_id) ?? { name: r.volunteers?.full_name, code: r.volunteers?.code, invited: false }), present: true })
+      for (const r of (il.data ?? []) as any[]) m.set(r.profile_id, { name: r.person_name, code: r.person_code, invited: true, present: false })
+      for (const r of (tl.data ?? []) as any[]) m.set(r.profile_id, { ...(m.get(r.profile_id) ?? { name: r.person_name, code: r.person_code, invited: false }), present: true })
       setRows([...m.values()].sort((x, y) => String(x.name).localeCompare(String(y.name))))
     })
   }, [session.id])
@@ -130,7 +191,7 @@ function SessionRecord({ session, onClose }: { session: any; onClose: () => void
         <tbody>
           {rows && list.length === 0 && <tr><td colSpan={4} className="muted">Nobody has been invited or marked yet.</td></tr>}
           {list.map(r => (
-            <tr key={r.code}><td><b>{r.name}</b></td><td>{r.code}</td><td>{r.invited ? 'Yes' : 'No'}</td>
+            <tr key={r.code ?? r.name}><td><b>{r.name}</b></td><td>{r.code}</td><td>{r.invited ? 'Yes' : 'No'}</td>
               <td>{r.present ? <span className="yes">✓ Present</span> : <span className="pill warn">Absent</span>}</td></tr>
           ))}
         </tbody>
