@@ -21,6 +21,7 @@ function ManageTraining() {
   const [assign, setAssign] = useState<any | null>(null)
   const [invite, setInvite] = useState<any | null>(null)
   const [record, setRecord] = useState<any | null>(null)
+  const [cal, setCal] = useState<any | null>(null)
   const [tick, setTick] = useState(0)
   useEffect(() => { supabase.from('training_topics').select('*').eq('active', true).order('sort').then(({ data }) => setTopics(data ?? [])) }, [tick])
   const vols = a.lookups.volunteers.filter(v => v.status === 'Active' && (a.isStaff || v.centre_id === a.profile?.centre_id))
@@ -55,7 +56,11 @@ function ManageTraining() {
       list: r => o.allCentres.find(c => c.value === r.centre_id)?.label ?? 'All centres' },
     { key: 'mode', label: 'Mode', type: 'select', options: MODES, list: false },
     { key: 'duration_min', label: 'Minutes', type: 'number', list: false },
+    { key: 'meeting_link', label: 'Video call link', list: false, help: 'Google Meet, Zoom or similar. Goes into the calendar invite.' },
     { key: 'description', label: 'Description', type: 'textarea', list: false },
+    { key: '_c', label: 'Calendar', form: false, list: r => !r.cal_wanted ? '' : r.cal_error ? <span className="pill warn" title={r.cal_error}>Problem</span>
+        : r.cal_dirty ? <span className="pill info" title="Goes out with the next hourly run, while emails are switched on">Waiting to send</span>
+        : <span className="pill good" title={r.cal_synced_at ? 'Last sent ' + new Date(r.cal_synced_at).toLocaleString() : ''}>Invites sent</span> },
     { key: '_n', label: 'Attended', form: false, list: r => { const at = (r.training_attendance?.[0]?.count ?? 0) + (r.training_attendance_logins?.[0]?.count ?? 0), inv = (r.training_invites?.[0]?.count ?? 0) + (r.training_invites_logins?.[0]?.count ?? 0); return inv ? `${at} (${inv} invited)` : at } },
   ]
   return (
@@ -86,7 +91,9 @@ function ManageTraining() {
           canEdit={r => a.isStaff || r.centre_id === a.profile?.centre_id}
           defaults={{ kind: 'Meeting', centre_id: o.myCentre, mode: 'Online', audience: 'Everyone' }}
           hint="Add a meeting or training session, use Invite to choose who should come, then Mark attendance afterwards. Record shows who was invited and who was there."
-          actions={r => <><button className="link" onClick={() => setInvite(r)}>Invite</button><button className="link" onClick={() => setMark(r)}>Mark attendance</button><button className="link" onClick={() => setRecord(r)}>Record</button></>} />
+          actions={r => <><button className="link" onClick={() => setInvite(r)}>Invite</button>
+            {(a.isStaff || (a.isLead && r.centre_id === a.profile?.centre_id)) && (!r.cal_wanted || r.cal_error) && <button className="link" onClick={() => setCal(r)}>{r.cal_error ? 'Resend calendar invites' : 'Send calendar invites'}</button>}
+            <button className="link" onClick={() => setMark(r)}>Mark attendance</button><button className="link" onClick={() => setRecord(r)}>Record</button></>} />
       )}
       {tab === 'Feedback' && <FeedbackList />}
       {assign && (
@@ -100,8 +107,39 @@ function ManageTraining() {
       {mark && <PeoplePicker title={`Who attended: ${mark.title}`} session={mark} what="attendance" people={people}
         note="Tick everyone who was there. Invited people are listed first."
         onClose={() => { setMark(null); setTick(t => t + 1) }} />}
+      {cal && <CalendarInvites session={cal} onClose={() => setCal(null)} onSent={() => { setCal(null); setTick(t => t + 1) }} />}
       {record && <SessionRecord session={record} onClose={() => setRecord(null)} />}
     </>
+  )
+}
+
+/** Confirm sending Google Calendar invites for a meeting. */
+function CalendarInvites({ session, onClose, onSent }: { session: any; onClose: () => void; onSent: () => void }) {
+  const [reach, setReach] = useState<any | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    supabase.rpc('meeting_invite_reach', { p_session: session.id }).then(({ data, error }) => { if (error) setErr(friendly(error)); setReach(data) })
+  }, [session.id])
+  const send = async () => {
+    setErr('')
+    const { error } = await supabase.rpc('send_meeting_invites', { p_session: session.id })
+    if (error) setErr(friendly(error)); else onSent()
+  }
+  return (
+    <Modal title={`Calendar invites: ${session.title}`} onClose={onClose}>
+      {session.cal_error && <p className="error">Last attempt had a problem: {session.cal_error}</p>}
+      {!reach ? <p className="muted">Checking…</p> : reach.invited === 0 ? <p>Nobody is invited yet. Use <b>Invite</b> first.</p> : (
+        <>
+          <p>Sends a Google Calendar invitation to the <b>{reach.with_email}</b> invited {reach.with_email === 1 ? 'person' : 'people'} who have an email address, with Accept and Decline.
+            {reach.without_email > 0 && <> <b>{reach.without_email}</b> invited {reach.without_email === 1 ? 'person has' : 'people have'} no email address on file and will not get one.</>}</p>
+          <p className="muted">From then on the invite stays up to date: people you add or remove under Invite, and changes to the date, time, title, link or description, are sent as updates. Deleting the meeting cancels it.</p>
+          <p className="muted">It goes out with the next hourly run of the email script, only while emails are switched on in Setup.{!session.start_time && ' This meeting has no start time, so it will be an all-day event.'}</p>
+        </>
+      )}
+      {err && <p className="error">{err}</p>}
+      <div className="actions"><span className="grow" /><button onClick={onClose}>Cancel</button>
+        <button className="primary" disabled={!reach || reach.invited === 0} onClick={send}>Send calendar invites</button></div>
+    </Modal>
   )
 }
 

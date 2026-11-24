@@ -14,6 +14,12 @@
  *      Hour timer > Every hour. Save.
  *   5. In the portal, Setup > Email > switch reminders on.
  *
+ * Calendar invites for meetings also need the Google Calendar API service:
+ *   Editor > Services (+) > Google Calendar API > Add. (Already added if this
+ *   project was copied with "Make a copy".) The first Run after that asks to
+ *   allow access to the calendar. Invites are sent from this account's
+ *   own calendar, and the meetings appear on it.
+ *
  * A free Gmail account may send to about 100 recipients a day from a script.
  * The portal's daily cap (Setup > Email) is 90 to stay under that.
  */
@@ -51,4 +57,77 @@ function sendPortalEmails() {
   }
   if (sent.length) call_('mail_done', { p_secret: secret, p_ids: sent });
   console.log('Waiting: ' + waiting.length + ', sent: ' + sent.length);
+  syncMeetingInvites_(secret);
+}
+
+// ---------------------------------------------------------------- calendar invites
+
+const TIME_ZONE = 'Asia/Kolkata';   // meeting times in the portal are India time
+
+function syncMeetingInvites_(secret) {
+  if (typeof Calendar === 'undefined') {
+    console.warn('Calendar invites skipped: add the Google Calendar API service (see the notes at the top).');
+    return;
+  }
+  const work = call_('cal_run', { p_secret: secret });
+  for (const m of work.meetings) {
+    let eventId = m.event_id;
+    try {
+      const body = eventBody_(m);
+      if (!eventId) eventId = findEvent_(m.id);          // created before, but the reply did not reach the portal
+      if (eventId) {
+        Calendar.Events.patch(body, 'primary', eventId, { sendUpdates: 'all' });
+      } else {
+        eventId = Calendar.Events.insert(body, 'primary', { sendUpdates: 'all' }).id;
+      }
+      call_('cal_done', { p_secret: secret, p_session: m.id, p_version: m.version, p_event_id: eventId, p_error: null });
+    } catch (e) {
+      console.error('Calendar invite for "' + m.title + '" failed: ' + e);
+      call_('cal_done', { p_secret: secret, p_session: m.id, p_version: m.version, p_event_id: eventId || null, p_error: String(e).slice(0, 300) });
+    }
+  }
+  for (const eventId of work.cancel) {
+    try {
+      Calendar.Events.remove('primary', eventId, { sendUpdates: 'all' });
+    } catch (e) {
+      console.error('Could not cancel calendar event ' + eventId + ': ' + e);   // already gone: nothing to do
+    }
+    call_('cal_done', { p_secret: secret, p_session: null, p_version: 0, p_event_id: eventId, p_error: null });
+  }
+  console.log('Calendar: ' + work.meetings.length + ' meeting(s) sent or updated, ' + work.cancel.length + ' cancelled');
+}
+
+function eventBody_(m) {
+  const lines = [];
+  if (m.description) lines.push(m.description, '');
+  if (m.mode) lines.push('Mode: ' + m.mode);
+  if (m.link) lines.push('Join: ' + m.link);
+  lines.push('', 'Details in the Pratyagra portal: ' + m.portal_url);
+  const body = {
+    summary: m.title,
+    description: lines.join('\n'),
+    location: m.link || (m.mode === 'Offline' ? 'In person' : ''),
+    attendees: m.guests.map(function (e) { return { email: e }; }),
+    guestsCanSeeOtherGuests: false,              // volunteers do not see each other's email addresses
+    guestsCanInviteOthers: false,
+    extendedProperties: { private: { portalSession: m.id } },
+    reminders: { useDefault: true },
+  };
+  if (m.start_time) {
+    const start = m.date + 'T' + m.start_time + ':00+05:30';
+    const end = new Date(new Date(start).getTime() + m.minutes * 60000);
+    body.start = { dateTime: start, timeZone: TIME_ZONE };
+    body.end = { dateTime: Utilities.formatDate(end, TIME_ZONE, "yyyy-MM-dd'T'HH:mm:ss") + '+05:30', timeZone: TIME_ZONE };
+  } else {
+    // no start time set: an all-day event on that date
+    const next = new Date(new Date(m.date + 'T00:00:00+05:30').getTime() + 86400000);
+    body.start = { date: m.date };
+    body.end = { date: Utilities.formatDate(next, TIME_ZONE, 'yyyy-MM-dd') };
+  }
+  return body;
+}
+
+function findEvent_(sessionId) {
+  const found = Calendar.Events.list('primary', { privateExtendedProperty: 'portalSession=' + sessionId, showDeleted: false, maxResults: 1 });
+  return found.items && found.items.length ? found.items[0].id : null;
 }
