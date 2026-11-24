@@ -10,6 +10,7 @@ const TYPES: [string, string][] = [
   ['task_emails', 'Tasks: new, due, changes asked for, handed in'],
   ['update_emails', 'New updates the person has not read'],
   ['training_emails', 'Trainings assigned and not done yet'],
+  ['cover_emails', 'Class hand-overs: asked, accepted, approved or declined'],
   ['checklist_reminders', 'Monthly checklist reminder to centre leads'],
 ]
 

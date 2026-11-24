@@ -80,6 +80,7 @@ export default function Dashboard() {
   return (
     <>
       <h1>Dashboard</h1>
+      {a.canManage && <CoverList />}
       <div className="stats">
         <Stat label="Active students" value={calc.active.length} sub={`${calc.active.filter((s: any) => s.gender === 'Female').length} girls · ${calc.active.filter((s: any) => s.gender === 'Male').length} boys`} />
         {!a.isPartner && <Stat label="Active volunteers" value={vols.length} />}
