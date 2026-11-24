@@ -3,7 +3,7 @@
 // admin team or board publishes it from Volunteers > Volunteer agreement.
 // "## " starts a section; each section gets its own "I have read this" tick.
 
-export const AGREEMENT_PDF = 'volunteer-agreement-2026-27.pdf'
+export const AGREEMENT_PDF = 'PEF Vol Agre.docx.pdf'
 export const DRAFT_TITLE = 'Pratyagra Education Foundation: Volunteer Agreement 2026-27'
 
 export const DRAFT_BODY = `## About this agreement
