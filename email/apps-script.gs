@@ -35,10 +35,12 @@ function call_(fn, payload) {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
   });
-  if (res.getResponseCode() !== 200) {
-    throw new Error(fn + ' failed (' + res.getResponseCode() + '): ' + res.getContentText().slice(0, 300));
+  const code = res.getResponseCode();
+  if (code < 200 || code > 299) {
+    throw new Error(fn + ' failed (' + code + '): ' + res.getContentText().slice(0, 300));
   }
-  return JSON.parse(res.getContentText());
+  const text = res.getContentText();
+  return text ? JSON.parse(text) : null;   // 204 = done, nothing to return
 }
 
 function sendPortalEmails() {
