@@ -10,7 +10,7 @@ type Mark = 'X' | 'AB'
 export default function Attendance() {
   const a = useAuth()
   const o = useOptions()
-  const { classes, classId, cls, setClassId, loading: loadingClasses } = useClasses()
+  const { classes, classId, cls, setClassId, loading: loadingClasses, isTeacher, extraTeachers } = useClasses()
   const now = new Date()
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() })
   const [students, setStudents] = useState<any[]>([])
@@ -20,10 +20,11 @@ export default function Attendance() {
   const [loading, setLoading] = useState(false)
   const [newDate, setNewDate] = useState(today())
   const [open, setOpen] = useState<any | null>(null)
+  const [covers, setCovers] = useState<any[]>([])
 
   const myVol = a.profile?.volunteer_id
-  const canEditAll = !!cls && (a.canManage || (a.isVolunteer && cls.volunteer_id === myVol))
-  const canEdit = (s: any) => canEditAll || (a.isVolunteer && s.taught_by === myVol)
+  const canEditAll = !!cls && (a.canManage || isTeacher(cls))
+  const canEdit = (s: any) => canEditAll || (!!myVol && s.taught_by === myVol)
   const key = (sid: string, stu: string) => sid + '|' + stu
 
   const load = useCallback(async () => {
@@ -45,6 +46,13 @@ export default function Attendance() {
     setStudents(list); setSessions(ses); setMarks(m); setLoading(false)
   }, [classId, ym.y, ym.m])
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!classId) return
+    supabase.from('class_covers').select('*').eq('class_id', classId).then(({ data }) => setCovers(data ?? []))
+  }, [classId])
+  // Dates handed to me that are not on the sheet yet (up to today).
+  const myCoverDates = covers.filter(k => k.volunteer_id === myVol && k.cover_date <= today() && !sessions.some(s => s.session_date === k.cover_date)
+    && k.cover_date.slice(0, 7) === `${ym.y}-${String(ym.m + 1).padStart(2, '0')}`).map(k => k.cover_date as string)
 
   // Scheduled class days in this month that have no column yet (up to today).
   const suggestions = useMemo(() => {
@@ -137,7 +145,7 @@ export default function Attendance() {
         {cls && (
           <p className="muted hint">
             {o.programs.find(p => p.value === cls.program_id)?.label} · {o.allCentres.find(c => c.value === cls.centre_id)?.label}
-            {volName(cls.volunteer_id) ? ` · ${volName(cls.volunteer_id)}` : ''}
+            {[cls.volunteer_id, ...extraTeachers(cls)].map(volName).filter(Boolean).map(n => ` · ${n}`).join('')}
             {canEditAll || sessions.some(canEdit) ? ' · Click a box: X = present, AB = absent, click again to clear.' : ' · View only.'}
           </p>
         )}
@@ -145,6 +153,12 @@ export default function Attendance() {
           <div className="row hint wrap">
             <span className="muted">Scheduled days not yet added:</span>
             {suggestions.map(d => { const f = fmtDay(d); return <button key={d} className="chip" onClick={() => addDate(d)}>+ {f.wd} {f.day} {f.mon}</button> })}
+          </div>
+        )}
+        {!canEditAll && myCoverDates.length > 0 && (
+          <div className="row hint wrap">
+            <span className="muted">You are taking this class on:</span>
+            {myCoverDates.map(d => { const f = fmtDay(d); return <button key={d} className="chip" onClick={() => addDate(d)}>+ {f.wd} {f.day} {f.mon}</button> })}
           </div>
         )}
         {err && <p className="error">{err}</p>}

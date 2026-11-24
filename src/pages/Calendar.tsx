@@ -38,7 +38,9 @@ export default function Calendar() {
       supabase.from('training_sessions').select('*').limit(2000),
       supabase.from('events').select('*').limit(2000),
       a.canManage ? supabase.from('profiles').select('id, centre_id, volunteer_id').limit(5000) : Promise.resolve({ data: [] as any[] }),
-    ]).then(([c, t, tr, ev, p]) => setData({ classes: c.data ?? [], tasks: t.data ?? [], trainings: tr.data ?? [], events: ev.data ?? [], profiles: p.data ?? [] }))
+      supabase.from('class_teachers').select('class_id, volunteer_id').limit(5000),
+      supabase.from('class_covers').select('class_id, cover_date, volunteer_id, volunteer_name').limit(5000),
+    ]).then(([c, t, tr, ev, p, ct, cv]) => setData({ classes: c.data ?? [], tasks: t.data ?? [], trainings: tr.data ?? [], events: ev.data ?? [], profiles: p.data ?? [], teachers: ct.data ?? [], covers: cv.data ?? [] }))
   }, [a.canManage])
 
   // the dates on screen
@@ -63,8 +65,11 @@ export default function Calendar() {
         const ds = iso(d)
         if (ds < first || !c.weekdays?.includes(d.getDay()) || ds < c.start_date || (c.end_date && ds > c.end_date)) continue
         const lt = localTime(ds, c.start_time)
-        out.push({ date: lt.date, time: lt.time, kind: 'class', title: c.name, centre: c.centre_id, mine: !!a.profile?.volunteer_id && c.volunteer_id === a.profile.volunteer_id,
-          sub: [centreName(c.centre_id), volName(c.volunteer_id), c.start_time ? istLabel(c.start_time) + ` · ${c.duration_min} min` : 'Time not set'].filter(Boolean).join(' · '),
+        const myVol = a.profile?.volunteer_id
+        const cover = data.covers.find((k: any) => k.class_id === c.id && k.cover_date === ds)
+        const teach = !!myVol && (c.volunteer_id === myVol || data.teachers.some((t: any) => t.class_id === c.id && t.volunteer_id === myVol))
+        out.push({ date: lt.date, time: lt.time, kind: 'class', title: c.name, centre: c.centre_id, mine: cover ? cover.volunteer_id === myVol : teach,
+          sub: [centreName(c.centre_id), cover ? `taken by ${cover.volunteer_name ?? 'another teacher'} (handed over)` : volName(c.volunteer_id), c.start_time ? istLabel(c.start_time) + ` · ${c.duration_min} min` : 'Time not set'].filter(Boolean).join(' · '),
           link: `/attendance?class=${c.id}`, linkLabel: 'Open attendance' })
       }
     }

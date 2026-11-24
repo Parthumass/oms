@@ -6,12 +6,16 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { MODES, useOptions } from './common'
 import { TimeRequests } from '../components/TimeRequests'
+import { CoverList, CoverModal } from '../components/Cover'
 
 export default function Classes() {
   const a = useAuth()
   const o = useOptions()
   const [students, setStudents] = useState<any[]>([])
   const [roster, setRoster] = useState<any | null>(null)
+  const [teachers, setTeachers] = useState<any | null>(null)
+  const [cover, setCover] = useState<any | null>(null)
+  const [coverTick, setCoverTick] = useState(0)
   const [tick, setTick] = useState(0)
   useEffect(() => {
     supabase.from('students').select('id, code, full_name, centre_id, standard').eq('status', 'Active').order('full_name').limit(5000)
@@ -23,7 +27,8 @@ export default function Classes() {
     { key: 'program_id', label: 'Program', type: 'select', options: o.programs, required: true },
     { key: 'subject', label: 'Subject' },
     { key: 'volunteer_id', label: 'Volunteer', type: 'select', options: o.allVolunteers,
-      help: 'Only this volunteer can mark the class. Inactive volunteers cannot sign in.' },
+      help: 'The main teacher of the class. Use Teachers in the list to add more teachers to the same class.' },
+    { key: '_t', label: 'Other teachers', form: false, list: r => r.class_teachers?.[0]?.count || '' },
     { key: 'weekdays', label: 'Class days', type: 'weekdays', locked: !(a.isLead || a.isAdmin) },
     { key: 'start_time', label: 'Start time (India time)', type: 'time', locked: !(a.isLead || a.isAdmin),
       help: 'Only the centre lead can set or change the class time. Volunteers can ask for a change from their home page.' },
@@ -41,12 +46,15 @@ export default function Classes() {
     <>
       <h1>Classes</h1>
       <TimeRequests classes={all} onChanged={() => setTick(t => t + 1)} />
-      <Crud key={tick} title="Classes" table="classes" select="*, class_students(count)" fields={fields} order={{ col: 'name' }}
+      <CoverList classes={all} tick={coverTick} />
+      <Crud key={tick} title="Classes" table="classes" select="*, class_students(count), class_teachers(count)" fields={fields} order={{ col: 'name' }}
         canAdd canEdit canDelete={a.isStaff}
         defaults={{ centre_id: o.myCentre, mode: 'Online', duration_min: 60, active: true, weekdays: [], start_date: new Date().toISOString().slice(0, 10) }}
-        hint="A class links one volunteer to a group of students. This is what decides which students a volunteer can see."
+        hint="A class links its teachers to a group of students. This is what decides which students a volunteer can see. Teachers adds more teachers to a class; Hand over gives one date to someone else."
         actions={r => (<>
           <button className="link" onClick={() => setRoster(r)}>Students</button>
+          <button className="link" onClick={() => setTeachers(r)}>Teachers</button>
+          <button className="link" onClick={() => setCover(r)}>Hand over</button>
           <Link className="link" to={`/attendance?class=${r.id}`}>Attendance</Link>
         </>)} />
       {roster && (
@@ -55,6 +63,14 @@ export default function Classes() {
           options={students.filter(s => s.centre_id === roster.centre_id).map(s => ({ value: s.id, label: s.full_name, sub: [s.code, s.standard && `Std ${s.standard}`].filter(Boolean).join(' · ') }))}
           onClose={() => { setRoster(null); setTick(t => t + 1) }} />
       )}
+      {teachers && (
+        <LinkPicker title={`Other teachers of ${teachers.name}`} table="class_teachers" parentKey="class_id" parentId={teachers.id} childKey="volunteer_id"
+          canEdit note="Tick volunteers who also teach this class. They can see its students, mark attendance and enter marks, the same as the main volunteer."
+          options={a.lookups.volunteers.filter(v => v.status === 'Active' && v.id !== teachers.volunteer_id && (!v.centre_id || v.centre_id === teachers.centre_id || a.isStaff))
+            .map(v => ({ value: v.id, label: v.full_name, sub: v.code }))}
+          onClose={() => { setTeachers(null); setTick(t => t + 1) }} />
+      )}
+      {cover && <CoverModal cls={cover} onClose={() => setCover(null)} onSaved={() => setCoverTick(t => t + 1)} />}
     </>
   )
 }

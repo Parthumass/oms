@@ -79,7 +79,7 @@ function AssessmentReport() {
   useEffect(() => {
     if (!classId) return
     Promise.all([
-      supabase.from('assessments').select('id, exam_type, assess_date, assessment_scores(student_id, pct)').eq('class_id', classId).order('assess_date'),
+      supabase.from('assessments').select('id, name, exam_type, assess_date, max_marks, assessment_scores(student_id, marks, pct)').eq('class_id', classId).order('assess_date'),
       supabase.from('class_students').select('students(id, code, full_name)').eq('class_id', classId),
     ]).then(([t, s]) => {
       setTests(t.data ?? [])
@@ -96,12 +96,12 @@ function AssessmentReport() {
     <section className="card">
       <div className="card-head wrap">
         <select value={classId} onChange={e => setClassId(e.target.value)} aria-label="Class">{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-        <button onClick={() => downloadCsv('assessment-report', ['Student', 'Code', ...tests.map(t => `${t.exam_type} ${t.assess_date}`), 'Baseline to Endline'],
+        <button onClick={() => downloadCsv('assessment-report', ['Student', 'Code', ...tests.map(t => `${t.name || t.exam_type} ${t.assess_date} (% of ${Number(t.max_marks)})`), 'Baseline to Endline'],
           students.map(s => [s.full_name, s.code, ...tests.map(t => score(t, s.id) ?? ''), change(s.id)?.toFixed(1) ?? '']))}>Export</button>
       </div>
-      <p className="muted hint">Marks in % for every assessment of this class. The last column is Endline average minus Baseline average.</p>
+      <p className="muted hint">Marks as a % of each exam's total, so exams with different totals can be compared. The last column is Endline average minus Baseline average. For marks out of the total, use Assessments, then Report cards.</p>
       <div className="table-wrap"><table>
-        <thead><tr><th>Student</th>{tests.map(t => <th key={t.id} className="num">{t.exam_type}<br /><small>{fmtDate(t.assess_date)}</small></th>)}<th className="num">Change</th></tr></thead>
+        <thead><tr><th>Student</th>{tests.map(t => <th key={t.id} className="num">{t.name || t.exam_type}<br /><small>{fmtDate(t.assess_date)} · out of {Number(t.max_marks)}</small></th>)}<th className="num">Change</th></tr></thead>
         <tbody>
           {(students.length === 0 || tests.length === 0) && <tr><td colSpan={99} className="muted">No assessments for this class yet.</td></tr>}
           {tests.length > 0 && students.map(s => { const c = change(s.id); return (

@@ -13,6 +13,9 @@ import Classes from './pages/Classes'
 import Attendance from './pages/Attendance'
 import Assessments from './pages/Assessments'
 import Holistic from './pages/Holistic'
+
+/** Holistic assessment is hidden for now. Set to true to bring the page back; nothing is deleted. */
+const SHOW_HOLISTIC = false
 import Training, { MyTraining } from './pages/Training'
 import Events from './pages/Events'
 import OtherTime from './pages/OtherTime'
@@ -59,7 +62,7 @@ export default function App() {
     ['/tasks', openTasks ? `Tasks (${openTasks})` : 'Tasks', !a.isPartner],
     ['/attendance', 'Attendance', true],
     ['/assessments', 'Assessments', true],
-    ['/holistic', 'Holistic assessment', !a.isPartner],
+    ['/holistic', 'Holistic assessment', SHOW_HOLISTIC && !a.isPartner],
     ['/training', 'Trainings / Meetings', !a.isPartner],
     ['/my-training', 'My trainings / meetings', a.alsoVolunteer],
     ['/events', 'Events', !a.isPartner],
@@ -102,7 +105,7 @@ export default function App() {
           {!a.isPartner && <Route path="/tasks" element={<Tasks />} />}
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/assessments" element={<Assessments />} />
-          {!a.isPartner && <Route path="/holistic" element={<Holistic />} />}
+          {SHOW_HOLISTIC && !a.isPartner && <Route path="/holistic" element={<Holistic />} />}
           {!a.isPartner && <Route path="/training" element={<Training />} />}
           {a.alsoVolunteer && <Route path="/my-training" element={<MyTraining />} />}
           {!a.isPartner && <Route path="/events" element={<Events />} />}

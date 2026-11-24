@@ -5,8 +5,9 @@ import { useAuth } from '../lib/auth'
 import { by, pct, WEEKDAYS } from '../lib/util'
 import { Stat } from '../components/ui'
 import { useOptions } from './common'
-import { EXAMS } from './Assessments'
+import { ALL_EXAMS } from './Assessments'
 import { AskTimeChange, TimeRequests } from '../components/TimeRequests'
+import { CoverList, CoverModal } from '../components/Cover'
 import { istLabel, localTime } from './Calendar'
 
 export default function Dashboard() {
@@ -14,6 +15,13 @@ export default function Dashboard() {
   const o = useOptions()
   const [d, setD] = useState<any>(null)
   const [ask, setAsk] = useState<any | null>(null)
+  const [cover, setCover] = useState<any | null>(null)
+  const [coverTick, setCoverTick] = useState(0)
+  const [mine, setMine] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    if (!a.profile?.volunteer_id) return
+    supabase.from('class_teachers').select('class_id').eq('volunteer_id', a.profile.volunteer_id).then(({ data }) => setMine(new Set((data ?? []).map((r: any) => r.class_id))))
+  }, [a.profile])
   useEffect(() => {
     Promise.all([
       supabase.from('students').select('id, gender, status').limit(10000),
@@ -31,7 +39,7 @@ export default function Dashboard() {
     const rate = (rows: any[]) => { const m = rows.reduce((x, r) => x + Number(r.marked), 0); return m ? (100 * rows.reduce((x, r) => x + Number(r.present), 0)) / m : null }
     const byClass = d.classes.map((c: any) => ({ c, pct: rate(d.att.filter((r: any) => r.class_id === c.id)) }))
     const byProgram = o.programs.map(p => ({ p, pct: rate(d.att.filter((r: any) => cById[r.class_id]?.program_id === p.value)), n: d.classes.filter((c: any) => c.program_id === p.value).length })).filter(x => x.n)
-    const exams = EXAMS.map(e => { const rows = d.asm.filter((r: any) => r.exam_type === e); const n = rows.reduce((x: number, r: any) => x + Number(r.scores), 0)
+    const exams = ALL_EXAMS.map(e => { const rows = d.asm.filter((r: any) => r.exam_type === e); const n = rows.reduce((x: number, r: any) => x + Number(r.scores), 0)
       return { e, n, pct: n ? rows.reduce((x: number, r: any) => x + Number(r.avg_pct) * Number(r.scores), 0) / n : null } }).filter(x => x.n)
     return { active, overall: rate(d.att), byClass, byProgram, exams }
   }, [d, o.programs])
@@ -57,11 +65,13 @@ export default function Dashboard() {
               <p>{c.class_students?.[0]?.count ?? 0} students{c.weekdays?.length ? ' · ' + c.weekdays.map((w: number) => WEEKDAYS[w]).join(', ') : ''}</p>
               <p>{c.start_time ? <>Starts <b>{istLabel(c.start_time)}</b> <span className="muted">({localTime('2026-01-05', c.start_time).time} your time)</span></> : <span className="muted">Start time not set yet</span>}</p>
               <p>Attendance so far: <b>{pct(p)}</b></p>
-              <div className="row"><Link className="btn primary" to={`/attendance?class=${c.id}`}>Mark attendance</Link><Link className="btn" to={`/assessments?class=${c.id}`}>Assessments</Link>{c.volunteer_id === a.profile?.volunteer_id && <button onClick={() => setAsk(c)}>Ask to change time</button>}</div>
+              <div className="row"><Link className="btn primary" to={`/attendance?class=${c.id}`}>Mark attendance</Link><Link className="btn" to={`/assessments?class=${c.id}`}>Assessments</Link>{(c.volunteer_id === a.profile?.volunteer_id || mine?.has(c.id)) && <><button onClick={() => setAsk(c)}>Ask to change time</button><button onClick={() => setCover(c)}>Can't make a class</button></>}</div>
             </div>
           ))}
         </div>
+        <CoverList classes={d.classes} tick={coverTick} />
         <TimeRequests key={ask ? 'a' : 'b'} classes={d.classes} />
+        {cover && <CoverModal cls={cover} onClose={() => setCover(null)} onSaved={() => setCoverTick(t => t + 1)} />}
         {ask && <AskTimeChange cls={ask} onClose={() => setAsk(null)} />}
       </>
     )
