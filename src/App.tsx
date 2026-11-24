@@ -26,6 +26,7 @@ import Users from './pages/Users'
 import Tasks, { useMyOpenTasks } from './pages/Tasks'
 import Updates, { useUnreadUpdates } from './pages/Updates'
 import Calendar from './pages/Calendar'
+import TimeOff, { useTimeOffToNote } from './pages/TimeOff'
 
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', board: 'Board', centre_lead: 'Centre Lead', volunteer: 'Volunteer', partner: 'Partner',
@@ -36,6 +37,7 @@ export default function App() {
   const [changing, setChanging] = useState(false)
   const [mailPrefs, setMailPrefs] = useState(false)
   const updates = useUnreadUpdates(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
+  const toNote = useTimeOffToNote(!!a.profile?.role && a.profile.active && a.canManage, a.profile?.id)
   const openTasks = useMyOpenTasks(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
   if (a.loading) return <Center><p className="muted">Loading…</p></Center>
@@ -60,6 +62,7 @@ export default function App() {
     ['/calendar', 'Calendar', !a.isPartner],
     ['/updates', updates.unread ? `Updates (${updates.unread})` : 'Updates', !a.isPartner],
     ['/tasks', openTasks ? `Tasks (${openTasks})` : 'Tasks', !a.isPartner],
+    ['/time-off', toNote ? `Time off (${toNote})` : 'Time off', !a.isPartner],
     ['/attendance', 'Attendance', true],
     ['/assessments', 'Assessments', true],
     ['/holistic', 'Holistic assessment', SHOW_HOLISTIC && !a.isPartner],
@@ -103,6 +106,7 @@ export default function App() {
           {!a.isPartner && <Route path="/updates" element={<Updates onSeen={updates.refresh} />} />}
           {!a.isPartner && <Route path="/calendar" element={<Calendar />} />}
           {!a.isPartner && <Route path="/tasks" element={<Tasks />} />}
+          {!a.isPartner && <Route path="/time-off" element={<TimeOff />} />}
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/assessments" element={<Assessments />} />
           {SHOW_HOLISTIC && !a.isPartner && <Route path="/holistic" element={<Holistic />} />}

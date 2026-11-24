@@ -240,3 +240,5 @@ table.scores input[aria-invalid="true"] { border-color: var(--bad); background: 
   .report-card th, .report-card .overall { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { margin: 16mm; }
 }
+.dot.leave, .cal-item.leave { --c: #9a2d6b; --b: #fbe6f2; }
+.chips.col { flex-direction: column; align-items: stretch; } .chips.col .chip { text-align: left; white-space: normal; height: auto; border-radius: 8px; }

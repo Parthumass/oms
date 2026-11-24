@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { iso, monthLabel, today, WEEKDAYS } from '../lib/util'
+import { fmtDate, iso, monthLabel, today, WEEKDAYS } from '../lib/util'
 import { Modal } from '../components/ui'
 import { useOptions } from './common'
 
-type Item = { date: string; time?: string; end?: string; kind: 'class' | 'task' | 'training' | 'event'; title: string; sub?: string; link?: string; linkLabel?: string; centre?: string | null; mine: boolean; done?: boolean }
-const KIND: Record<Item['kind'], string> = { class: 'Class', task: 'Task due', training: 'Training / meeting', event: 'Event' }
-const KINDS: Record<Item['kind'], string> = { class: 'Classes', task: 'Tasks due', training: 'Trainings / meetings', event: 'Events' }
+type Item = { date: string; time?: string; end?: string; kind: 'class' | 'task' | 'training' | 'event' | 'leave'; title: string; sub?: string; link?: string; linkLabel?: string; centre?: string | null; mine: boolean; done?: boolean }
+const KIND: Record<Item['kind'], string> = { class: 'Class', task: 'Task due', training: 'Training / meeting', event: 'Event', leave: 'Time off' }
+const KINDS: Record<Item['kind'], string> = { class: 'Classes', task: 'Tasks due', training: 'Trainings / meetings', event: 'Events', leave: 'Time off' }
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 const startOfWeek = (d: Date) => addDays(d, -d.getDay())
 
@@ -30,6 +30,7 @@ export default function Calendar() {
   const [data, setData] = useState<any>(null)
   const [open, setOpen] = useState<Item | null>(null)
   const [kinds, setKinds] = useState<Set<string>>(new Set(['class', 'task', 'training', 'event']))
+  const [away, setAway] = useState('all')   // time off: 'all', 'none' or one person's login id
 
   useEffect(() => {
     Promise.all([
@@ -40,7 +41,8 @@ export default function Calendar() {
       a.canManage ? supabase.from('profiles').select('id, centre_id, volunteer_id').limit(5000) : Promise.resolve({ data: [] as any[] }),
       supabase.from('class_teachers').select('class_id, volunteer_id').limit(5000),
       supabase.from('class_covers').select('class_id, cover_date, volunteer_id, volunteer_name').limit(5000),
-    ]).then(([c, t, tr, ev, p, ct, cv]) => setData({ classes: c.data ?? [], tasks: t.data ?? [], trainings: tr.data ?? [], events: ev.data ?? [], profiles: p.data ?? [], teachers: ct.data ?? [], covers: cv.data ?? [] }))
+      supabase.from('time_off').select('id, profile_id, person_name, person_code, centre_id, kind, start_date, end_date, noted_at').limit(5000),
+    ]).then(([c, t, tr, ev, p, ct, cv, off]) => setData({ timeOff: off.data ?? [], classes: c.data ?? [], tasks: t.data ?? [], trainings: tr.data ?? [], events: ev.data ?? [], profiles: p.data ?? [], teachers: ct.data ?? [], covers: cv.data ?? [] }))
   }, [a.canManage])
 
   // the dates on screen
@@ -79,11 +81,21 @@ export default function Calendar() {
       sub: [centreName(t.centre_id) ?? 'All centres', t.kind, t.mode, istLabel(t.start_time)].filter(Boolean).join(' · '), link: '/training', linkLabel: 'Open' }) }
     for (const e of data.events) out.push({ date: e.event_date, kind: 'event', title: e.name, centre: e.centre_id, mine: true,
       sub: centreName(e.centre_id), link: '/events', linkLabel: 'Open events' })
+    for (const r of data.timeOff) {
+      if (away === 'none' || (away !== 'all' && r.profile_id !== away)) continue
+      for (const ds of dates) if (ds >= r.start_date && ds <= r.end_date) out.push({ date: ds, kind: 'leave', title: `Away: ${r.person_name ?? 'Someone'}`, centre: r.centre_id, mine: r.profile_id === me,
+        sub: [r.kind, r.start_date === r.end_date ? fmtDate(r.start_date) : `${fmtDate(r.start_date)} to ${fmtDate(r.end_date)}`, centreName(r.centre_id), r.noted_at ? 'noted' : 'not yet noted'].filter(Boolean).join(' · '), link: '/time-off', linkLabel: 'Open time off' })
+    }
     return out
-      .filter(i => kinds.has(i.kind))
+      .filter(i => i.kind === 'leave' || kinds.has(i.kind))
       .filter(i => (scope === 'mine' ? i.mine : scope === 'all' || scope === 'centre' ? true : i.centre === scope || (i.kind === 'training' && !i.centre)))
       .sort((x, y) => (x.time ? 0 : 1) - (y.time ? 0 : 1) || (x.time ?? '').localeCompare(y.time ?? '', undefined, { numeric: true }) || x.title.localeCompare(y.title))
-  }, [data, range, scope, kinds, a.lookups.volunteers, a.profile, me, o.allCentres])
+  }, [data, range, dates, scope, kinds, away, a.lookups.volunteers, a.profile, me, o.allCentres])
+  const awayPeople = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of data?.timeOff ?? []) if (r.end_date >= today()) m.set(r.profile_id, r.person_name ?? 'Someone')
+    return [...m].map(([id, name]) => ({ id, name })).sort((x, y) => x.name.localeCompare(y.name))
+  }, [data])
   const byDate = useMemo(() => { const m: Record<string, Item[]> = {}; for (const i of items) (m[i.date] ??= []).push(i); return m }, [items])
 
   const step = (n: number) => setCursor(c => view === 'Month' ? new Date(c.getFullYear(), c.getMonth() + n, 1) : addDays(c, n * (view === 'Week' ? 7 : 1)))
@@ -122,10 +134,15 @@ export default function Calendar() {
           </div>
         </div>
         <div className="row wrap hint">
-          {(Object.keys(KIND) as Item['kind'][]).map(k => (
+          {(Object.keys(KIND) as Item['kind'][]).filter(k => k !== 'leave').map(k => (
             <label key={k} className="check"><input type="checkbox" checked={kinds.has(k)} onChange={() => setKinds(s => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n })} />
               <span className={`dot ${k}`} /> {KINDS[k]}</label>
           ))}
+          <label className="check"><span className="dot leave" />
+            <select value={away} onChange={e => setAway(e.target.value)} aria-label="Time off">
+              <option value="all">Time off: everyone</option><option value="none">Time off: hide</option>
+              {awayPeople.map(p => <option key={p.id} value={p.id}>Time off: {p.name}</option>)}
+            </select></label>
           <span className="muted">Class times are shown in your own time zone.</span>
         </div>
         {!data ? <p className="muted pad">Loading…</p> : view === 'Month' ? (
