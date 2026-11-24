@@ -284,3 +284,28 @@ input.mini { width: 140px; padding: 4px 6px; font-size: 13px; }
 tr.detail-row td { background: var(--bg); }
 .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 16px; }
 .detail-grid p, tr.detail-row p { margin: 2px 0; }
+
+/* volunteer agreement */
+.agreement-page { min-height: 100%; background: var(--bg); padding: 24px 16px; display: flex; justify-content: center; }
+.agreement-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 24px; width: 100%; max-width: 820px; }
+.agreement-head { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+.agreement-head img { width: 64px; height: 64px; object-fit: contain; }
+.agreement-head h1 { font-size: 22px; margin: 0 0 6px; }
+.agreement-section { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.agreement-section.done { border-color: #9fd3b5; background: #f6fbf8; }
+.agreement-section h3, .agreement-text h3 { margin: 0 0 8px; font-size: 16px; }
+.agreement-text p, .agreement-text li { line-height: 1.55; }
+.agreement-text ol, .agreement-text ul { padding-left: 22px; }
+.agreement-text section + section { margin-top: 14px; }
+.agreement-sign { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+.agreement-sign input { font-size: 18px; font-family: Georgia, 'Times New Roman', serif; }
+.agreement-editor { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.agreement-preview { max-height: 60vh; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+.signature-box { border-top: 2px solid var(--ink); margin-top: 20px; padding-top: 10px; }
+.signed-name { font-family: Georgia, 'Times New Roman', serif; font-size: 20px; }
+@media print {
+  body * { visibility: hidden; }
+  .printable, .printable * { visibility: visible; }
+  .printable { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none; }
+}

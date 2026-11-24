@@ -15,12 +15,18 @@
 -- much the form as a whole, can send, and quietly drops obvious bots.
 -- =====================================================================
 
+-- New details kept on the volunteer record too.
+alter table public.volunteers add column if not exists date_of_birth date;
+alter table public.volunteers add column if not exists emergency_contact text;
+alter table public.volunteers add column if not exists social_media text;
+
 create table if not exists public.volunteer_applications (
   id              uuid primary key default gen_random_uuid(),
   full_name       text not null,
   email           text not null,
   phone           text not null,
   gender          text check (gender in ('Male', 'Female', 'Other')),
+  date_of_birth   date not null,
   location        text,              -- city / state
   education       text,
   occupation      text,
@@ -32,6 +38,11 @@ create table if not exists public.volunteer_applications (
   availability    text,              -- days and times that suit them
   hours_per_week  text,
   heard_from      text,
+  referred_by     text,              -- a Pratyagra volunteer who referred them
+  past_volunteering text,            -- volunteered with Pratyagra or others before
+  social_media    text,              -- LinkedIn / Instagram
+  emergency_name  text,
+  emergency_phone text,
   motivation      text,
   consent         boolean not null default false,
   status          text not null default 'New' check (status in ('New', 'Added', 'Not now')),
@@ -58,6 +69,7 @@ declare
   nm text := left(trim(coalesce(f ->> 'full_name', '')), 120);
   em text := lower(left(trim(coalesce(f ->> 'email', '')), 200));
   ph text := left(trim(coalesce(f ->> 'phone', '')), 30);
+  dob date;
 begin
   -- a hidden field people never see: bots fill it in. Pretend all is well.
   if coalesce(trim(f ->> 'website'), '') <> '' then return 'ok'; end if;
@@ -65,6 +77,14 @@ begin
   if em !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'Please enter a valid email address.'; end if;
   if regexp_replace(ph, '[^0-9]', '', 'g') !~ '^[0-9]{7,15}$' then raise exception 'Please enter a valid phone number.'; end if;
   if coalesce((f ->> 'consent')::boolean, false) is not true then raise exception 'Please tick the box to agree before sending.'; end if;
+  begin dob := (f ->> 'date_of_birth')::date; exception when others then dob := null; end;
+  if dob is null or dob > current_date - interval '13 years' or dob < current_date - interval '100 years' then
+    raise exception 'Please enter your date of birth.';
+  end if;
+  if length(trim(coalesce(f ->> 'location', ''))) < 2 then raise exception 'Please enter your city and state.'; end if;
+  if length(trim(coalesce(f ->> 'emergency_name', ''))) < 2 or regexp_replace(coalesce(f ->> 'emergency_phone', ''), '[^0-9]', '', 'g') !~ '^[0-9]{7,15}$' then
+    raise exception 'Please give an emergency contact name and phone number.';
+  end if;
   t := f ->> 'gender';
   if t is not null and t <> '' and t not in ('Male', 'Female', 'Other') then raise exception 'Please choose a gender from the list.'; end if;
 
@@ -75,15 +95,19 @@ begin
     raise exception 'Too many forms are coming in right now. Please try again in an hour.';
   end if;
 
-  insert into public.volunteer_applications (full_name, email, phone, gender, location, education, occupation, company,
-         volunteer_type, subject_pref, class_pref, languages, availability, hours_per_week, heard_from, motivation, consent)
-  values (nm, em, ph, nullif(t, ''),
+  insert into public.volunteer_applications (full_name, email, phone, gender, date_of_birth, location, education, occupation, company,
+         volunteer_type, subject_pref, class_pref, languages, availability, hours_per_week, heard_from,
+         referred_by, past_volunteering, social_media, emergency_name, emergency_phone, motivation, consent)
+  values (nm, em, ph, nullif(t, ''), dob,
           nullif(left(trim(f ->> 'location'), 200), ''), nullif(left(trim(f ->> 'education'), 200), ''),
           nullif(left(trim(f ->> 'occupation'), 200), ''), nullif(left(trim(f ->> 'company'), 200), ''),
           nullif(left(trim(f ->> 'volunteer_type'), 200), ''), nullif(left(trim(f ->> 'subject_pref'), 200), ''),
           nullif(left(trim(f ->> 'class_pref'), 200), ''), nullif(left(trim(f ->> 'languages'), 200), ''),
           nullif(left(trim(f ->> 'availability'), 500), ''), nullif(left(trim(f ->> 'hours_per_week'), 50), ''),
-          nullif(left(trim(f ->> 'heard_from'), 200), ''), nullif(left(trim(f ->> 'motivation'), 2000), ''), true);
+          nullif(left(trim(f ->> 'heard_from'), 200), ''),
+          nullif(left(trim(f ->> 'referred_by'), 200), ''), nullif(left(trim(f ->> 'past_volunteering'), 1000), ''),
+          nullif(left(trim(f ->> 'social_media'), 300), ''), left(trim(f ->> 'emergency_name'), 120), left(trim(f ->> 'emergency_phone'), 30),
+          nullif(left(trim(f ->> 'motivation'), 2000), ''), true);
   return 'ok';
 end $$;
 revoke all on function public.submit_volunteer_application(jsonb) from public;
@@ -100,14 +124,17 @@ begin
   select coalesce(v.code, v.full_name) into dup from public.volunteers v where lower(v.email) = lower(a.email) limit 1;
   if dup is not null then raise exception 'A volunteer with this email is already in the portal (%). Use "Not now" if it is the same person.', dup; end if;
   insert into public.volunteers (full_name, email, phone, centre_id, status, verified, gender, education, occupation, company,
-                                 volunteer_type, subject_pref, class_pref, location, notes)
+                                 volunteer_type, subject_pref, class_pref, location, date_of_birth, emergency_contact, social_media, notes)
   values (a.full_name, a.email, a.phone, p_centre, 'Active', false, a.gender, a.education, a.occupation, a.company,
-          a.volunteer_type, a.subject_pref, a.class_pref, a.location,
+          a.volunteer_type, a.subject_pref, a.class_pref, a.location, a.date_of_birth,
+          nullif(concat_ws(' · ', a.emergency_name, a.emergency_phone), ''), a.social_media,
           nullif(concat_ws(E'\n',
             case when a.languages is not null then 'Languages: ' || a.languages end,
             case when a.availability is not null then 'Available: ' || a.availability end,
             case when a.hours_per_week is not null then 'Hours a week: ' || a.hours_per_week end,
             case when a.heard_from is not null then 'Heard about us: ' || a.heard_from end,
+            case when a.referred_by is not null then 'Referred by: ' || a.referred_by end,
+            case when a.past_volunteering is not null then 'Volunteered before: ' || a.past_volunteering end,
             case when a.motivation is not null then 'Why: ' || a.motivation end,
             'From the sign-up form, ' || to_char(a.created_at at time zone 'Asia/Kolkata', 'DD Mon YYYY')), ''))
   returning id into vid;

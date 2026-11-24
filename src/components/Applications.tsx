@@ -63,8 +63,9 @@ export function Applications({ onAdded }: { onAdded?: () => void }) {
             {open === r.id && (
               <tr className="detail-row"><td colSpan={6}>
                 <div className="detail-grid">
-                  {line('Gender', r.gender)}{line('Languages', r.languages)}{line('Education', r.education)}{line('Does now', r.occupation)}
+                  {line('Date of birth', r.date_of_birth ? `${fmtDate(r.date_of_birth)} (age ${Math.floor((Date.now() - new Date(r.date_of_birth).getTime()) / 31557600000)})` : null)}{line('Gender', r.gender)}{line('Languages', r.languages)}{line('Education', r.education)}{line('Does now', r.occupation)}
                   {line('College or company', r.company)}{line('Age group', r.class_pref)}{line('Days and times', r.availability)}{line('Heard about us', r.heard_from)}
+                  {line('Referred by', r.referred_by)}{line('Volunteered before', r.past_volunteering)}{line('Social media', r.social_media)}{line('Emergency contact', [r.emergency_name, r.emergency_phone].filter(Boolean).join(' · '))}
                 </div>
                 {line('Why', r.motivation)}
               </td></tr>

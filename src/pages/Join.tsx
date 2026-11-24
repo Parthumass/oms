@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { LOGO } from '../lib/util'
+import { AGREEMENT_PDF } from '../lib/agreementDraft'
 
-const HELP = ['Teaching children', 'Curriculum and lesson plans', 'Mentoring', 'Design, social media or content', 'Operations and admin', 'Fundraising and partnerships', 'Anything that is needed']
+const HELP = ['Teaching volunteer', 'Spoken English volunteer', 'Maths volunteer', 'Digital / computer skills volunteer', 'Life skills facilitator', 'Mentor', 'Curriculum volunteer (lesson plans and materials)', 'Substitute volunteer', 'Special educator', 'Extra-curricular (art, music, sport)', 'Social media and content', 'Operations and admin', 'Fundraising and partnerships', 'Anything that is needed']
+const OCCUPATIONS = ['Student', 'Self Employed / Business', 'Homemaker', 'Retired', 'Teacher / Educator', 'Corporate job', 'Professional', 'Other']
+const PAST = ['No, this is my first time', 'Yes, with Pratyagra before', 'Yes, with another organisation']
 const SUBJECTS = ['English', 'Maths', 'Science', 'Computers / digital skills', 'Social studies', 'Hindi', 'Art, music or sport', 'Life skills', 'Any']
 const CLASSES = ['Classes 1 to 5', 'Classes 6 to 8', 'Classes 9 to 10', 'Classes 11 to 12', 'Any']
 const HOURS = ['1 to 2 hours', '3 to 5 hours', '6 to 10 hours', 'More than 10 hours']
@@ -19,9 +22,9 @@ export default function Join() {
     <div className="field"><label htmlFor={'j_' + k}>{label}{o.required && <span className="req"> *</span>}</label>
       <input id={'j_' + k} type={o.type ?? 'text'} required={o.required} autoComplete={o.auto} placeholder={o.placeholder} maxLength={200} value={v[k] ?? ''} onChange={e => set(k, e.target.value)} /></div>
   )
-  const pick = (k: string, label: string, options: string[]) => (
-    <div className="field"><label htmlFor={'j_' + k}>{label}</label>
-      <select id={'j_' + k} value={v[k] ?? ''} onChange={e => set(k, e.target.value)}><option value="">Choose…</option>{options.map(x => <option key={x}>{x}</option>)}</select></div>
+  const pick = (k: string, label: string, options: string[], required = false) => (
+    <div className="field"><label htmlFor={'j_' + k}>{label}{required && <span className="req"> *</span>}</label>
+      <select id={'j_' + k} required={required} value={v[k] ?? ''} onChange={e => set(k, e.target.value)}><option value="">Choose…</option>{options.map(x => <option key={x}>{x}</option>)}</select></div>
   )
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setErr('')
@@ -50,29 +53,39 @@ export default function Join() {
               {text('full_name', 'Full name', { required: true, auto: 'name' })}
               {text('email', 'Email', { required: true, type: 'email', auto: 'email' })}
               {text('phone', 'Phone (WhatsApp if possible)', { required: true, type: 'tel', auto: 'tel' })}
-              {pick('gender', 'Gender', ['Female', 'Male', 'Other'])}
-              {text('location', 'City and state', { auto: 'address-level2' })}
+              {text('date_of_birth', 'Date of birth', { required: true, type: 'date', auto: 'bday' })}
+              {pick('gender', 'Gender', ['Female', 'Male', 'Other'], true)}
+              {text('location', 'City and state', { required: true, auto: 'address-level2' })}
               {text('languages', 'Languages you speak', { placeholder: 'e.g. English, Hindi' })}
             </div>
             <h3>Study and work</h3>
             <div className="form-grid">
               {text('education', 'Highest education', { placeholder: 'e.g. B.Sc. Physics' })}
-              {text('occupation', 'What you do now', { placeholder: 'e.g. Student, Engineer, Teacher' })}
+              {pick('occupation', 'Occupation', OCCUPATIONS)}
               {text('company', 'College or company')}
+              {text('social_media', 'LinkedIn or Instagram (optional)', { placeholder: 'Link or handle' })}
             </div>
             <h3>How you would like to help</h3>
             <div className="form-grid">
-              {pick('volunteer_type', 'I would like to help with', HELP)}
-              {pick('subject_pref', 'Subject I would like to teach', SUBJECTS)}
-              {pick('class_pref', 'Age group', CLASSES)}
+              {pick('volunteer_type', 'I would like to volunteer as', HELP, true)}
+              {pick('subject_pref', 'Subject I would like to teach', SUBJECTS, true)}
+              {pick('class_pref', 'Classes I would like to teach', CLASSES, true)}
               {pick('hours_per_week', 'Time I can give each week', HOURS)}
               {text('availability', 'Days and times that suit you', { placeholder: 'e.g. Weekday evenings after 6 pm, Saturday mornings' })}
               {pick('heard_from', 'How did you hear about us?', HEARD)}
+              {text('referred_by', 'Did a Pratyagra volunteer refer you? Their name')}
+              {pick('past_volunteering', 'Have you volunteered before?', PAST)}
+            </div>
+            <h3>Emergency contact</h3>
+            <div className="form-grid">
+              {text('emergency_name', 'Name and relation', { required: true, placeholder: 'e.g. Asha Iyer (mother)' })}
+              {text('emergency_phone', 'Phone', { required: true, type: 'tel' })}
             </div>
             <div className="field top-gap"><label htmlFor="j_motivation">Why would you like to volunteer?</label>
               <textarea id="j_motivation" rows={4} maxLength={2000} value={v.motivation ?? ''} onChange={e => set('motivation', e.target.value)} /></div>
             {/* left empty by people; bots fill it in */}
             <div className="hp" aria-hidden="true"><label htmlFor="j_website">Website</label><input id="j_website" tabIndex={-1} autoComplete="off" value={v.website} onChange={e => set('website', e.target.value)} /></div>
+            <p className="muted top-gap">Because we work with children, every volunteer reads and signs our <a href={import.meta.env.BASE_URL + AGREEMENT_PDF} target="_blank" rel="noreferrer noopener">volunteer agreement and child protection policy</a> before starting. You will be asked to sign it in the portal once your login is ready.</p>
             <label className="check top-gap"><input type="checkbox" checked={!!v.consent} onChange={e => set('consent', e.target.checked)} />
               <span>I agree that Pratyagra Education Foundation may keep these details and contact me about volunteering. They are seen only by the Pratyagra team.<span className="req"> *</span></span></label>
             {err && <p className="error">{err}</p>}

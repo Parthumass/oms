@@ -5,6 +5,7 @@ import { LOGO, loginName } from './lib/util'
 import { useState } from 'react'
 import Login from './pages/Login'
 import Join from './pages/Join'
+import { AgreementGate, MyAgreement, useAgreementStatus } from './components/Agreement'
 import { ChangeMyPassword } from './components/Logins'
 import { MyMailPrefs } from './components/Mail'
 import { ViewAsBanner, ViewAsPicker, stopViewAs } from './components/ViewAs'
@@ -41,9 +42,12 @@ export default function App() {
   const [changing, setChanging] = useState(false)
   const [mailPrefs, setMailPrefs] = useState(false)
   const [viewing, setViewing] = useState(false)
+  const [myAgreement, setMyAgreement] = useState(false)
   const updates = useUnreadUpdates(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
   const toNote = useTimeOffToNote(!!a.profile?.role && a.profile.active && a.canManage, a.profile?.id)
   const openTasks = useMyOpenTasks(!!a.profile?.role && a.profile.active && !a.isPartner, a.profile?.id)
+  const signsAgreement = !!a.profile?.role && a.profile.active && (a.isVolunteer || !!a.profile.volunteer_id)
+  const agreement = useAgreementStatus(signsAgreement && !a.viewAs, a.profile?.id)
   if (!configured) return <Center><h1>Not connected</h1><p>Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then rebuild.</p></Center>
   // the public volunteer sign-up form: no login needed
   if (where.pathname === '/join') return <Join />
@@ -60,6 +64,11 @@ export default function App() {
         <button onClick={() => supabase.auth.signOut()}>Sign out</button>
       </Center>
     )
+  }
+
+  // volunteers read and sign the volunteer agreement once, before anything else
+  if (agreement.status?.needed && !a.viewAs) {
+    return <AgreementGate status={agreement.status} onSigned={agreement.reload} onSignOut={() => supabase.auth.signOut()} />
   }
 
   const nav: [string, string, boolean][] = [
@@ -102,6 +111,7 @@ export default function App() {
           <span>{a.profile?.code ? a.profile.code + ' · ' : ''}{a.profile?.title || ROLE_LABEL[role]}{a.alsoVolunteer && !a.profile?.title ? ' + Volunteer' : ''}{centre ? ` · ${centre.name}` : ''}{partner ? ` · ${partner.name}` : ''}</span>
           {a.isStaff && !a.viewAs && <button className="link" onClick={() => setViewing(true)}>View as…</button>}
           {a.viewAs && <button className="link" onClick={stopViewAs}>Back to my view</button>}
+          {signsAgreement && !a.viewAs && <button className="link" onClick={() => setMyAgreement(true)}>My volunteer agreement</button>}
           {!a.isPartner && !a.viewAs && <button className="link" onClick={() => setMailPrefs(true)}>Email reminders</button>}
           {!a.viewAs && <button className="link" onClick={() => setChanging(true)}>Change password</button>}
           <button className="link" onClick={() => supabase.auth.signOut()}>Sign out</button>
@@ -109,6 +119,7 @@ export default function App() {
       </aside>
       {changing && <ChangeMyPassword onClose={() => setChanging(false)} />}
       {mailPrefs && <MyMailPrefs onClose={() => setMailPrefs(false)} />}
+      {myAgreement && <MyAgreement onClose={() => setMyAgreement(false)} />}
       {viewing && <ViewAsPicker onClose={() => setViewing(false)} />}
       <main className="main">
         <Routes>
