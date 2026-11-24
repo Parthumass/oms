@@ -294,7 +294,8 @@ t "lead cannot widen own post to everyone" 2 "update announcements set audience=
 t "author deletes own post" 2 "delete from announcements where id='00000000-0000-0000-0000-000000000096' returning 1" "1"
 # --- class times, time-change requests, centre tasks (migration 007) ---
 t "lead sets a class time" 2 "update classes set start_time='17:00', weekdays='{1,3}' where id='00000000-0000-0000-0000-0000000000a1' returning start_time" "17:00:00"
-t "board cannot change a class time" a "update classes set start_time='18:00' where id='00000000-0000-0000-0000-0000000000a1'" "*Only the centre lead*"
+t "board can change a class time" a "update classes set start_time='18:00' where id='00000000-0000-0000-0000-0000000000a1' returning start_time" "18:00:00"
+t "volunteer still cannot change a class time" 4 "update classes set start_time='19:00' where id='00000000-0000-0000-0000-0000000000a1' returning 1" ""
 t "board can still edit other class details" a "update classes set subject='English' where id='00000000-0000-0000-0000-0000000000a1' returning subject" "English"
 t "other lead cannot change it" 3 "update classes set start_time='18:00' where id='00000000-0000-0000-0000-0000000000a1' returning 1" ""
 t "admin can change a class time" 1 "update classes set start_time='17:30' where id='00000000-0000-0000-0000-0000000000a1' returning start_time" "17:30:00"

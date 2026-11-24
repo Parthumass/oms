@@ -44,7 +44,7 @@ export function TimeRequests({ classes, onChanged }: { classes: any[]; onChanged
   const a = useAuth()
   const [rows, setRows] = useState<any[]>([])
   const [err, setErr] = useState('')
-  const canDecide = a.isLead || a.isAdmin
+  const canDecide = a.isLead || a.isStaff
   const load = useCallback(() => {
     supabase.from('class_time_requests').select('*').order('created_at', { ascending: false }).limit(200).then(({ data }) => setRows(data ?? []))
   }, [])
